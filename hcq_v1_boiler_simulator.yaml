@@ -1,0 +1,617 @@
+substitutions:
+  device_name: hcq-ot-boiler-simulator
+  friendly_name: HCQ OpenTherm Boiler Simulator
+  # HCQ v1.0 pin map from before jeroen85/OpenQuatt PR #303.
+  ot_slave_in_pin: GPIO16
+  ot_slave_out_pin: GPIO15
+  status_led_yellow_pin: GPIO47
+  status_led_red_pin: GPIO48
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.5.1
+  build_path: build/hcq_v1_boiler_simulator
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_BT_ENABLED: n
+
+psram:
+  mode: octal
+  speed: 80MHz
+  ignore_not_found: false
+
+logger:
+
+api:
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+wifi:
+  reboot_timeout: 0s
+  ap:
+    ssid: "HCQ Boiler Simulator"
+    password: "openquatt"
+    ap_timeout: 0s
+
+captive_portal:
+
+web_server:
+  port: 80
+  version: 3
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [hcq_ot_boiler_simulator]
+
+hcq_ot_boiler_simulator:
+  id: boiler_simulator
+  in_pin: ${ot_slave_in_pin}
+  out_pin: ${ot_slave_out_pin}
+  enabled: true
+  response_enabled: true
+  dhw_present: true
+  control_type_modulating: true
+  cooling_supported: false
+  member_id: 1
+  max_capacity_kw: 20
+  min_modulation_level: 20
+  slave_ot_version: 2.2
+  product_type: 1
+  product_version: 1
+  update_interval: 500ms
+
+output:
+  - platform: gpio
+    id: link_led
+    pin: ${status_led_yellow_pin}
+
+  - platform: gpio
+    id: fault_led
+    pin: ${status_led_red_pin}
+
+switch:
+  - platform: template
+    id: responses_enabled
+    name: "Responses enabled"
+    icon: mdi:connection
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: automatic_mode
+    name: "Automatic boiler model"
+    icon: mdi:state-machine
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: dhw_demand
+    name: "DHW demand"
+    icon: mdi:water-boiler
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: manual_telemetry
+    name: "Manual telemetry"
+    icon: mdi:tune-variant
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: manual_ch_active
+    name: "Manual CH active"
+    icon: mdi:radiator
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: manual_dhw_active
+    name: "Manual DHW active"
+    icon: mdi:water-boiler
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: manual_flame_on
+    name: "Manual flame"
+    icon: mdi:fire
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: fault_active
+    name: "Fault indication"
+    icon: mdi:alert-octagon
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: diagnostic_active
+    name: "Diagnostic indication"
+    icon: mdi:stethoscope
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: service_request
+    name: "Service request"
+    icon: mdi:wrench-clock
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: lockout_reset
+    name: "Lockout reset enabled"
+    icon: mdi:lock-reset
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: low_water_pressure
+    name: "Low water pressure"
+    icon: mdi:gauge-low
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: flame_fault
+    name: "Flame fault"
+    icon: mdi:fire-alert
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: air_pressure_fault
+    name: "Air pressure fault"
+    icon: mdi:weather-windy
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: water_over_temp
+    name: "Water overtemperature"
+    icon: mdi:thermometer-alert
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: boiler_temperature_valid
+    name: "Boiler temperature valid"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: return_temperature_valid
+    name: "Return temperature valid"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: pressure_valid
+    name: "Pressure valid"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: modulation_valid
+    name: "Modulation valid"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: dhw_temperature_valid
+    name: "DHW temperature valid"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+number:
+  - platform: template
+    id: ambient_temperature
+    name: "Ambient temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 20
+    min_value: 5
+    max_value: 40
+    step: 0.5
+
+  - platform: template
+    id: dhw_target
+    name: "DHW target"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 55
+    min_value: 20
+    max_value: 80
+    step: 0.5
+
+  - platform: template
+    id: return_delta
+    name: "Return temperature delta"
+    unit_of_measurement: "°C"
+    optimistic: true
+    restore_value: true
+    initial_value: 8
+    min_value: 0
+    max_value: 30
+    step: 0.5
+
+  - platform: template
+    id: minimum_t_set
+    name: "Minimum accepted TSet"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 10
+    min_value: 0
+    max_value: 40
+    step: 0.5
+
+  - platform: template
+    id: ignition_delay
+    name: "Ignition delay"
+    unit_of_measurement: "s"
+    optimistic: true
+    restore_value: true
+    initial_value: 3
+    min_value: 0
+    max_value: 30
+    step: 1
+
+  - platform: template
+    id: heat_rate
+    name: "Heating rate"
+    unit_of_measurement: "°C/s"
+    optimistic: true
+    restore_value: true
+    initial_value: 0.35
+    min_value: 0.05
+    max_value: 5
+    step: 0.05
+
+  - platform: template
+    id: cool_rate
+    name: "Cooling rate"
+    unit_of_measurement: "°C/s"
+    optimistic: true
+    restore_value: true
+    initial_value: 0.08
+    min_value: 0.01
+    max_value: 2
+    step: 0.01
+
+  - platform: template
+    id: pressure
+    name: "CH water pressure"
+    unit_of_measurement: "bar"
+    device_class: pressure
+    optimistic: true
+    restore_value: true
+    initial_value: 1.5
+    min_value: 0
+    max_value: 6
+    step: 0.1
+
+  - platform: template
+    id: max_t_set
+    name: "Maximum CH setpoint"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 80
+    min_value: 20
+    max_value: 90
+    step: 1
+
+  - platform: template
+    id: max_capacity
+    name: "Maximum boiler capacity"
+    unit_of_measurement: "kW"
+    optimistic: true
+    restore_value: true
+    initial_value: 20
+    min_value: 0
+    max_value: 255
+    step: 1
+
+  - platform: template
+    id: minimum_modulation
+    name: "Minimum modulation"
+    unit_of_measurement: "%"
+    optimistic: true
+    restore_value: true
+    initial_value: 20
+    min_value: 0
+    max_value: 100
+    step: 1
+
+  - platform: template
+    id: dhw_temperature
+    name: "DHW temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 40
+    min_value: 0
+    max_value: 90
+    step: 0.5
+
+  - platform: template
+    id: manual_boiler_temperature
+    name: "Manual boiler temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 40
+    min_value: 0
+    max_value: 120
+    step: 0.5
+
+  - platform: template
+    id: manual_return_temperature
+    name: "Manual return temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 30
+    min_value: 0
+    max_value: 120
+    step: 0.5
+
+  - platform: template
+    id: manual_modulation
+    name: "Manual modulation"
+    unit_of_measurement: "%"
+    optimistic: true
+    restore_value: true
+    initial_value: 50
+    min_value: 0
+    max_value: 100
+    step: 1
+
+  - platform: template
+    id: oem_fault_code
+    name: "OEM fault code"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    min_value: 0
+    max_value: 255
+    step: 1
+
+  - platform: template
+    id: oem_diagnostic_code
+    name: "OEM diagnostic code"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+binary_sensor:
+  - platform: template
+    name: "Master status valid"
+    device_class: connectivity
+    lambda: |-
+      return id(boiler_simulator)->get_master_status_valid();
+
+  - platform: template
+    name: "Master CH Enable"
+    icon: mdi:radiator
+    lambda: |-
+      return id(boiler_simulator)->get_master_ch_enable();
+
+  - platform: template
+    name: "Master DHW Enable"
+    icon: mdi:water-boiler
+    lambda: |-
+      return id(boiler_simulator)->get_master_dhw_enable();
+
+  - platform: template
+    name: "Simulated CH active"
+    icon: mdi:radiator
+    lambda: |-
+      return id(boiler_simulator)->get_ch_active();
+
+  - platform: template
+    name: "Simulated DHW active"
+    icon: mdi:water-boiler
+    lambda: |-
+      return id(boiler_simulator)->get_dhw_active();
+
+  - platform: template
+    name: "Simulated flame"
+    icon: mdi:fire
+    lambda: |-
+      return id(boiler_simulator)->get_flame_on();
+
+  - platform: template
+    name: "Simulated fault"
+    device_class: problem
+    lambda: |-
+      return id(boiler_simulator)->get_fault();
+
+  - platform: template
+    name: "Simulated diagnostic indication"
+    device_class: problem
+    lambda: |-
+      return id(boiler_simulator)->get_diagnostic();
+
+sensor:
+  - platform: template
+    name: "Master TSet"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      return id(boiler_simulator)->get_master_t_set();
+
+  - platform: template
+    name: "OpenTherm request count"
+    icon: mdi:counter
+    accuracy_decimals: 0
+    state_class: total_increasing
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_request_count());
+
+  - platform: template
+    name: "Last OpenTherm request ID"
+    icon: mdi:identifier
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const int request_id = id(boiler_simulator)->get_last_request_id();
+      return request_id >= 0 ? static_cast<float>(request_id) : NAN;
+
+  - platform: template
+    name: "Last OpenTherm request age"
+    icon: mdi:timer-outline
+    unit_of_measurement: "s"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const uint32_t age_ms = id(boiler_simulator)->get_last_request_age_ms();
+      return age_ms == UINT32_MAX ? NAN : static_cast<float>(age_ms) / 1000.0f;
+
+  - platform: template
+    name: "Simulated boiler temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      return id(boiler_simulator)->get_boiler_temperature();
+
+  - platform: template
+    name: "Simulated return temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      return id(boiler_simulator)->get_return_temperature();
+
+  - platform: template
+    name: "Simulated relative modulation"
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      return id(boiler_simulator)->get_relative_modulation();
+
+text_sensor:
+  - platform: template
+    name: "Simulator boiler state"
+    icon: mdi:state-machine
+    update_interval: 1s
+    lambda: |-
+      return {id(boiler_simulator)->get_mode_name()};
+
+button:
+  - platform: template
+    name: "Reset boiler model"
+    icon: mdi:restart
+    on_press:
+      - lambda: |-
+          id(boiler_simulator)->reset_model();
+
+  - platform: restart
+    name: "Restart simulator"
+    entity_category: diagnostic
+
+interval:
+  - interval: 500ms
+    then:
+      - lambda: |-
+          auto &simulator = *id(boiler_simulator);
+          simulator.set_response_enabled(id(responses_enabled).state);
+          simulator.set_automatic_mode(id(automatic_mode).state);
+          simulator.set_dhw_demand(id(dhw_demand).state);
+          simulator.set_manual_telemetry(id(manual_telemetry).state);
+          simulator.set_manual_ch_active(id(manual_ch_active).state);
+          simulator.set_manual_dhw_active(id(manual_dhw_active).state);
+          simulator.set_manual_flame_on(id(manual_flame_on).state);
+          simulator.set_fault_active(id(fault_active).state);
+          simulator.set_diagnostic_active(id(diagnostic_active).state);
+          simulator.set_service_request(id(service_request).state);
+          simulator.set_lockout_reset(id(lockout_reset).state);
+          simulator.set_low_water_pressure(id(low_water_pressure).state);
+          simulator.set_flame_fault(id(flame_fault).state);
+          simulator.set_air_pressure_fault(id(air_pressure_fault).state);
+          simulator.set_water_over_temp(id(water_over_temp).state);
+          simulator.set_oem_fault_code(static_cast<uint8_t>(lroundf(id(oem_fault_code).state)));
+          simulator.set_oem_diagnostic_code(
+              static_cast<uint16_t>(lroundf(id(oem_diagnostic_code).state)));
+          simulator.set_ambient_temperature(id(ambient_temperature).state);
+          simulator.set_dhw_target(id(dhw_target).state);
+          simulator.set_return_delta(id(return_delta).state);
+          simulator.set_minimum_t_set(id(minimum_t_set).state);
+          simulator.set_ignition_delay(id(ignition_delay).state);
+          simulator.set_heat_rate(id(heat_rate).state);
+          simulator.set_cool_rate(id(cool_rate).state);
+          simulator.set_pressure(id(pressure).state);
+          simulator.set_max_t_set(id(max_t_set).state);
+          simulator.set_max_capacity_kw(static_cast<uint8_t>(lroundf(id(max_capacity).state)));
+          simulator.set_min_modulation_level(
+              static_cast<uint8_t>(lroundf(id(minimum_modulation).state)));
+          simulator.set_dhw_temperature(id(dhw_temperature).state);
+          simulator.set_manual_boiler_temperature(id(manual_boiler_temperature).state);
+          simulator.set_manual_return_temperature(id(manual_return_temperature).state);
+          simulator.set_manual_modulation(id(manual_modulation).state);
+          simulator.set_boiler_temperature_valid(id(boiler_temperature_valid).state);
+          simulator.set_return_temperature_valid(id(return_temperature_valid).state);
+          simulator.set_pressure_valid(id(pressure_valid).state);
+          simulator.set_modulation_valid(id(modulation_valid).state);
+          simulator.set_dhw_temperature_valid(id(dhw_temperature_valid).state);
+
+          if (simulator.get_master_status_valid()) {
+            id(link_led).turn_on();
+          } else {
+            id(link_led).turn_off();
+          }
+          if (simulator.get_fault() || simulator.get_diagnostic()) {
+            id(fault_led).turn_on();
+          } else {
+            id(fault_led).turn_off();
+          }
