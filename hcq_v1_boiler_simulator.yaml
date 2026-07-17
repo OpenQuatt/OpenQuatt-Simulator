@@ -10,7 +10,7 @@ substitutions:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  min_version: 2026.5.1
+  min_version: 2026.7.0
   build_path: build/hcq_v1_boiler_simulator
 
 esp32:
@@ -21,7 +21,7 @@ esp32:
     type: esp-idf
     version: recommended
     sdkconfig_options:
-      COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: y
       CONFIG_BT_ENABLED: n
 
 psram:

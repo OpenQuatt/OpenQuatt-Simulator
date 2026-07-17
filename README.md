@@ -42,9 +42,10 @@ OTB / OpenTherm master  ── 2-wire ── OTT / OpenTherm slave
 
 ## Build and flash
 
-Install a current ESPHome release, then run from this repository root:
+Install the pinned ESPHome release, then run from this repository root:
 
 ```sh
+python3 -m pip install -r requirements.txt
 esphome config hcq_v1_boiler_simulator.yaml
 esphome compile hcq_v1_boiler_simulator.yaml
 esphome run hcq_v1_boiler_simulator.yaml
