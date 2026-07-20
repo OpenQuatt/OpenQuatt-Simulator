@@ -10,6 +10,7 @@
 
 #include "OpenTherm.h"
 #include "boiler_simulator_model.h"
+#include "opentherm_response_scheduler.h"
 
 namespace esphome::hcq_ot_boiler_simulator {
 
@@ -25,7 +26,8 @@ class HCQOTBoilerSimulator : public PollingComponent
   void set_in_pin(uint8_t pin) { in_pin_ = pin; }
   void set_out_pin(uint8_t pin) { out_pin_ = pin; }
   void set_enabled(bool value) { enabled_ = value; }
-  void set_response_enabled(bool value) { response_enabled_ = value; }
+  void set_response_enabled(bool value);
+  void set_response_delay_ms(uint32_t value) { response_scheduler_.set_delay_ms(value); }
   void set_dhw_present(bool value) { capabilities_.dhw_present = value; }
   void set_control_type_modulating(bool value) { capabilities_.control_type_modulating = value; }
   void set_cooling_supported(bool value) { capabilities_.cooling_supported = value; }
@@ -79,8 +81,63 @@ class HCQOTBoilerSimulator : public PollingComponent
   bool get_master_dhw_enable() const { return master_state_.dhw_enable; }
   float get_master_t_set() const { return master_state_.t_set_c; }
   uint32_t get_request_count() const { return request_count_; }
+  uint32_t get_invalid_request_count() const { return invalid_request_count_; }
   int get_last_request_id() const { return last_request_id_; }
   uint32_t get_last_request_age_ms() const;
+  uint32_t get_response_delay_ms() const { return response_scheduler_.delay_ms(); }
+  uint32_t get_response_scheduled_count() const { return response_scheduler_.scheduled_count(); }
+  uint32_t get_response_queued_count() const { return response_scheduler_.queued_count(); }
+  uint32_t get_response_suppressed_count() const { return response_scheduler_.suppressed_count(); }
+  uint32_t get_response_queue_failure_count() const {
+    return response_scheduler_.queue_failure_count();
+  }
+  uint32_t get_response_overlap_count() const { return response_scheduler_.overlap_count(); }
+  bool has_response_turnaround() const { return response_scheduler_.has_turnaround(); }
+  uint32_t get_last_response_turnaround_us() const {
+    return response_scheduler_.last_turnaround_us();
+  }
+  uint32_t get_min_response_turnaround_us() const {
+    return response_scheduler_.min_turnaround_us();
+  }
+  uint32_t get_max_response_turnaround_us() const {
+    return response_scheduler_.max_turnaround_us();
+  }
+  uint32_t get_rx_capture_count() const {
+    return opentherm_ != nullptr ? opentherm_->getRxCaptureCount() : 0;
+  }
+  uint32_t get_rx_decode_error_count() const {
+    return opentherm_ != nullptr ? opentherm_->getRxDecodeErrorCount() : 0;
+  }
+  uint32_t get_rx_glitch_reject_count() const {
+    return opentherm_ != nullptr
+               ? opentherm_->getDriverErrorCount(OpenThermDriverError::DRIVER_ERROR_GLITCH_REJECT)
+               : 0;
+  }
+  uint32_t get_rx_start_bit_error_count() const {
+    return opentherm_ != nullptr
+               ? opentherm_->getDriverErrorCount(OpenThermDriverError::DRIVER_ERROR_START_BIT_INVALID)
+               : 0;
+  }
+  uint32_t get_rx_timing_error_count() const {
+    return opentherm_ != nullptr
+               ? opentherm_->getDriverErrorCount(OpenThermDriverError::DRIVER_ERROR_TIMING_INVALID)
+               : 0;
+  }
+  uint32_t get_rx_queue_overflow_count() const {
+    return opentherm_ != nullptr ? opentherm_->getRxQueueOverflowCount() : 0;
+  }
+  uint32_t get_tx_queued_count() const {
+    return opentherm_ != nullptr ? opentherm_->getTxQueuedCount() : 0;
+  }
+  uint32_t get_tx_completed_count() const {
+    return opentherm_ != nullptr ? opentherm_->getTxCompletedCount() : 0;
+  }
+  uint32_t get_tx_error_count() const {
+    return opentherm_ != nullptr ? opentherm_->getTxErrorCount() : 0;
+  }
+  const char *get_last_driver_error_name() const {
+    return opentherm_ != nullptr ? opentherm_->getLastDriverErrorName() : "NOT_STARTED";
+  }
   bool get_ch_active() const { return model_.state().ch_active; }
   bool get_dhw_active() const { return model_.state().dhw_active; }
   bool get_flame_on() const { return model_.state().flame_on; }
@@ -91,6 +148,7 @@ class HCQOTBoilerSimulator : public PollingComponent
   float get_relative_modulation() const;
   const char *get_mode_name() const;
   void reset_model();
+  void reset_protocol_diagnostics();
 
   void setup() override;
   void loop() override;
@@ -137,6 +195,7 @@ class HCQOTBoilerSimulator : public PollingComponent
                                         OpenThermResponseStatus status,
                                         void *context);
   void process_request_(unsigned long request, OpenThermResponseStatus status);
+  void try_send_pending_response_();
   void parse_request_(OpenThermMessageType type, OpenThermMessageID id, uint16_t data);
   unsigned long build_response_(OpenThermMessageType type, OpenThermMessageID id,
                                 uint16_t data);
@@ -162,8 +221,10 @@ class HCQOTBoilerSimulator : public PollingComponent
   unsigned long last_request_ms_ = 0;
   unsigned long last_model_update_ms_ = 0;
   uint32_t request_count_ = 0;
+  uint32_t invalid_request_count_ = 0;
   int last_request_id_ = -1;
   OpenTherm *opentherm_ = nullptr;
+  hcq::ot_sim::OpenThermResponseScheduler response_scheduler_{};
 
   MasterState master_state_{};
   Capabilities capabilities_{};

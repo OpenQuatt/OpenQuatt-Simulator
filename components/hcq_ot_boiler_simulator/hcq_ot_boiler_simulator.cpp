@@ -47,6 +47,16 @@ HCQOTBoilerSimulator::~HCQOTBoilerSimulator() {
   }
 }
 
+void HCQOTBoilerSimulator::set_response_enabled(bool value) {
+  if (response_enabled_ == value) {
+    return;
+  }
+  response_enabled_ = value;
+  if (!response_enabled_) {
+    response_scheduler_.cancel_pending(true);
+  }
+}
+
 bool HCQOTBoilerSimulator::get_master_status_valid() const {
   const unsigned long now_ms = now_millis();
   return enabled_ && last_master_status_ms_ != 0 &&
@@ -84,6 +94,17 @@ void HCQOTBoilerSimulator::reset_model() {
   last_model_update_ms_ = now_millis();
 }
 
+void HCQOTBoilerSimulator::reset_protocol_diagnostics() {
+  request_count_ = 0;
+  invalid_request_count_ = 0;
+  last_request_id_ = -1;
+  last_request_ms_ = 0;
+  response_scheduler_.reset_diagnostics();
+  if (opentherm_ != nullptr) {
+    opentherm_->resetDiagnostics();
+  }
+}
+
 void HCQOTBoilerSimulator::setup() {
   opentherm_ = new OpenTherm(in_pin_, out_pin_, true);
 #ifdef USE_OTA_STATE_LISTENER
@@ -104,6 +125,8 @@ void HCQOTBoilerSimulator::dump_config() {
   ESP_LOGCONFIG(TAG, "  Capacity: %u kW", capabilities_.max_capacity_kw);
   ESP_LOGCONFIG(TAG, "  Minimum modulation: %u%%", capabilities_.min_modulation_level);
   ESP_LOGCONFIG(TAG, "  Responses enabled: %s", YESNO(response_enabled_));
+  ESP_LOGCONFIG(TAG, "  Response delay: %lu ms",
+                static_cast<unsigned long>(response_scheduler_.delay_ms()));
 }
 
 void HCQOTBoilerSimulator::on_shutdown() { stop_(); }
@@ -182,6 +205,7 @@ void HCQOTBoilerSimulator::start_() {
 void HCQOTBoilerSimulator::stop_() {
   start_pending_ = false;
   bus_idle_since_ms_ = 0;
+  response_scheduler_.cancel_pending(false);
   if (opentherm_ != nullptr && started_) {
     opentherm_->end();
   }
@@ -197,6 +221,7 @@ void HCQOTBoilerSimulator::loop() {
   }
   if (started_ && opentherm_ != nullptr) {
     opentherm_->process();
+    try_send_pending_response_();
   }
 }
 
@@ -239,8 +264,11 @@ void HCQOTBoilerSimulator::process_request_callback_(unsigned long request,
 
 void HCQOTBoilerSimulator::process_request_(unsigned long request,
                                              OpenThermResponseStatus status) {
-  if (request == 0 || status != OpenThermResponseStatus::SUCCESS ||
-      opentherm_ == nullptr) {
+  if (status != OpenThermResponseStatus::SUCCESS) {
+    invalid_request_count_++;
+    return;
+  }
+  if (opentherm_ == nullptr) {
     return;
   }
 
@@ -253,11 +281,36 @@ void HCQOTBoilerSimulator::process_request_(unsigned long request,
   parse_request_(type, id, data);
 
   if (!response_enabled_) {
+    response_scheduler_.mark_suppressed();
     return;
   }
   const unsigned long response = build_response_(type, id, data);
   if (response != 0) {
-    opentherm_->sendResponse(response);
+    const uint64_t now_us = static_cast<uint64_t>(esp_timer_get_time());
+    const uint32_t rx_age_us = opentherm_->getLastRxFrameAgeUs();
+    const uint64_t request_end_us = rx_age_us <= now_us ? now_us - rx_age_us : now_us;
+    response_scheduler_.schedule(static_cast<uint32_t>(response), request_end_us);
+  }
+}
+
+void HCQOTBoilerSimulator::try_send_pending_response_() {
+  if (!response_scheduler_.pending() || opentherm_ == nullptr || !started_) {
+    return;
+  }
+  if (!response_enabled_) {
+    response_scheduler_.cancel_pending(true);
+    return;
+  }
+
+  const uint64_t now_us = static_cast<uint64_t>(esp_timer_get_time());
+  if (!response_scheduler_.due(now_us)) {
+    return;
+  }
+
+  if (opentherm_->sendResponse(response_scheduler_.pending_frame())) {
+    response_scheduler_.mark_queued(now_us);
+  } else {
+    response_scheduler_.mark_queue_failed();
   }
 }
 

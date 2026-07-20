@@ -62,6 +62,7 @@ hcq_ot_boiler_simulator:
   out_pin: ${ot_slave_out_pin}
   enabled: true
   response_enabled: true
+  response_delay_ms: 30
   dhw_present: true
   control_type_modulating: true
   cooling_supported: false
@@ -230,6 +231,19 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
 
 number:
+  - platform: template
+    id: response_delay_ms
+    name: "OpenTherm response delay"
+    icon: mdi:timer-cog-outline
+    unit_of_measurement: "ms"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 30
+    min_value: 20
+    max_value: 700
+    step: 5
+
   - platform: template
     id: ambient_temperature
     name: "Ambient temperature"
@@ -494,6 +508,175 @@ sensor:
       return static_cast<float>(id(boiler_simulator)->get_request_count());
 
   - platform: template
+    name: "OpenTherm invalid request count"
+    icon: mdi:alert-circle-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_invalid_request_count());
+
+  - platform: template
+    name: "OpenTherm RX capture count"
+    icon: mdi:download-network-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_rx_capture_count());
+
+  - platform: template
+    name: "OpenTherm RX decode error count"
+    icon: mdi:alert-circle-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_rx_decode_error_count());
+
+  - platform: template
+    name: "OpenTherm RX glitch reject count"
+    icon: mdi:pulse
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_rx_glitch_reject_count());
+
+  - platform: template
+    name: "OpenTherm RX start bit error count"
+    icon: mdi:ray-start-arrow
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_rx_start_bit_error_count());
+
+  - platform: template
+    name: "OpenTherm RX timing error count"
+    icon: mdi:timeline-alert-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_rx_timing_error_count());
+
+  - platform: template
+    name: "OpenTherm RX queue overflow count"
+    icon: mdi:tray-alert
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_rx_queue_overflow_count());
+
+  - platform: template
+    name: "OpenTherm response queued count"
+    icon: mdi:upload-network-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_response_queued_count());
+
+  - platform: template
+    name: "OpenTherm response suppressed count"
+    icon: mdi:message-off-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_response_suppressed_count());
+
+  - platform: template
+    name: "OpenTherm response queue failure count"
+    icon: mdi:upload-off-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_response_queue_failure_count());
+
+  - platform: template
+    name: "OpenTherm response overlap count"
+    icon: mdi:message-alert-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_response_overlap_count());
+
+  - platform: template
+    name: "OpenTherm TX completed count"
+    icon: mdi:upload-check-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_tx_completed_count());
+
+  - platform: template
+    name: "OpenTherm TX error count"
+    icon: mdi:upload-off-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(id(boiler_simulator)->get_tx_error_count());
+
+  - platform: template
+    name: "OpenTherm last response turnaround"
+    icon: mdi:timer-outline
+    unit_of_measurement: "ms"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      auto &simulator = *id(boiler_simulator);
+      return simulator.has_response_turnaround()
+                 ? static_cast<float>(simulator.get_last_response_turnaround_us()) / 1000.0f
+                 : NAN;
+
+  - platform: template
+    name: "OpenTherm minimum response turnaround"
+    icon: mdi:timer-chevron-down-outline
+    unit_of_measurement: "ms"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      auto &simulator = *id(boiler_simulator);
+      return simulator.has_response_turnaround()
+                 ? static_cast<float>(simulator.get_min_response_turnaround_us()) / 1000.0f
+                 : NAN;
+
+  - platform: template
+    name: "OpenTherm maximum response turnaround"
+    icon: mdi:timer-chevron-up-outline
+    unit_of_measurement: "ms"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      auto &simulator = *id(boiler_simulator);
+      return simulator.has_response_turnaround()
+                 ? static_cast<float>(simulator.get_max_response_turnaround_us()) / 1000.0f
+                 : NAN;
+
+  - platform: template
     name: "Last OpenTherm request ID"
     icon: mdi:identifier
     accuracy_decimals: 0
@@ -542,6 +725,14 @@ sensor:
 
 text_sensor:
   - platform: template
+    name: "OpenTherm last driver error"
+    icon: mdi:alert-decagram-outline
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return {id(boiler_simulator)->get_last_driver_error_name()};
+
+  - platform: template
     name: "Simulator boiler state"
     icon: mdi:state-machine
     update_interval: 1s
@@ -556,6 +747,14 @@ button:
       - lambda: |-
           id(boiler_simulator)->reset_model();
 
+  - platform: template
+    name: "Reset OpenTherm diagnostics"
+    icon: mdi:counter
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(boiler_simulator)->reset_protocol_diagnostics();
+
   - platform: restart
     name: "Restart simulator"
     entity_category: diagnostic
@@ -566,6 +765,8 @@ interval:
       - lambda: |-
           auto &simulator = *id(boiler_simulator);
           simulator.set_response_enabled(id(responses_enabled).state);
+          simulator.set_response_delay_ms(
+              static_cast<uint32_t>(lroundf(id(response_delay_ms).state)));
           simulator.set_automatic_mode(id(automatic_mode).state);
           simulator.set_dhw_demand(id(dhw_demand).state);
           simulator.set_manual_telemetry(id(manual_telemetry).state);

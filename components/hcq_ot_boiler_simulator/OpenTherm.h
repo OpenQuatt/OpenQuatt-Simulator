@@ -198,6 +198,18 @@ public:
 	bool isValidParity(unsigned long message);
 	bool isValidRequest(unsigned long request);
 	bool isValidResponse(unsigned long response);
+	uint32_t getLastRxFrameAgeUs() const;
+	uint32_t getRxCaptureCount() const { return rx_capture_count_; }
+	uint32_t getRxDecodeSuccessCount() const { return rx_decode_success_count_; }
+	uint32_t getRxDecodeErrorCount() const { return rx_decode_error_count_; }
+	uint32_t getRxQueueOverflowCount() const { return rx_queue_overflow_count_; }
+	uint32_t getTxQueuedCount() const { return tx_queued_count_; }
+	uint32_t getTxCompletedCount() const { return tx_completed_count_; }
+	uint32_t getTxErrorCount() const { return tx_error_count_; }
+	OpenThermDriverError getLastDriverError() const { return last_driver_error_; }
+	uint32_t getDriverErrorCount(OpenThermDriverError error) const;
+	const char *getLastDriverErrorName() const;
+	void resetDiagnostics();
 
 	//responses
 	bool isFault(unsigned long response);
@@ -222,6 +234,17 @@ private:
 	volatile unsigned long responseTimestamp;
 	uint32_t cycles_per_us_ = 240;
 	portMUX_TYPE mux_ = portMUX_INITIALIZER_UNLOCKED;
+	static constexpr size_t DRIVER_ERROR_COUNT = 7;
+	volatile uint32_t rx_capture_count_ = 0;
+	volatile uint32_t rx_decode_success_count_ = 0;
+	volatile uint32_t rx_decode_error_count_ = 0;
+	volatile uint32_t rx_queue_overflow_count_ = 0;
+	volatile uint32_t tx_queued_count_ = 0;
+	volatile uint32_t tx_completed_count_ = 0;
+	volatile uint32_t tx_error_count_ = 0;
+	volatile uint32_t driver_error_counts_[DRIVER_ERROR_COUNT]{};
+	volatile OpenThermDriverError last_driver_error_ = DRIVER_ERROR_NONE;
+	uint32_t last_rx_frame_end_cycles_ = 0;
 #if HCQ_OT_RMT_SUPPORTED
 	bool rx_rmt_ready_ = false;
 	static constexpr size_t RX_CAPTURE_SYMBOLS = 96;
@@ -265,6 +288,7 @@ private:
 	bool arm_rmt_receive_();
 	bool init_tx_channel_();
 	bool queue_frame_tx_(unsigned long frame);
+	void record_driver_error_(OpenThermDriverError error);
 #if HCQ_OT_RMT_SUPPORTED
 	bool queue_rx_frame_(const rmt_symbol_word_t *symbols, size_t num_symbols, uint32_t done_ts_cycles);
 	bool pop_rx_frame_(RxFrame &frame);

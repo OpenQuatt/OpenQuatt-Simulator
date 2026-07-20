@@ -104,6 +104,66 @@ bool IRAM_ATTR OpenTherm::isReady()
 	return status == OpenThermStatus::READY;
 }
 
+uint32_t OpenTherm::getLastRxFrameAgeUs() const {
+	if (last_rx_frame_end_cycles_ == 0 || cycles_per_us_ == 0) {
+		return 0;
+	}
+	return static_cast<uint32_t>(now_cycles() - last_rx_frame_end_cycles_) / cycles_per_us_;
+}
+
+uint32_t OpenTherm::getDriverErrorCount(OpenThermDriverError error) const {
+	const size_t index = static_cast<size_t>(error);
+	return index < DRIVER_ERROR_COUNT ? driver_error_counts_[index] : 0;
+}
+
+const char *OpenTherm::getLastDriverErrorName() const {
+	switch (last_driver_error_) {
+		case DRIVER_ERROR_NONE:
+			return "NONE";
+		case DRIVER_ERROR_GLITCH_REJECT:
+			return "GLITCH_REJECT";
+		case DRIVER_ERROR_EDGE_OVERFLOW:
+			return "RX_QUEUE_OVERFLOW";
+		case DRIVER_ERROR_START_BIT_INVALID:
+			return "START_BIT_INVALID";
+		case DRIVER_ERROR_TIMING_INVALID:
+			return "TIMING_INVALID";
+		case DRIVER_ERROR_TX_UNAVAILABLE:
+			return "TX_UNAVAILABLE";
+		case DRIVER_ERROR_TX_QUEUE_FAILED:
+			return "TX_QUEUE_FAILED";
+		default:
+			return "UNKNOWN";
+	}
+}
+
+void OpenTherm::record_driver_error_(OpenThermDriverError error) {
+	const size_t index = static_cast<size_t>(error);
+	if (error == DRIVER_ERROR_NONE || index >= DRIVER_ERROR_COUNT) {
+		return;
+	}
+	portENTER_CRITICAL(&mux_);
+	driver_error_counts_[index]++;
+	last_driver_error_ = error;
+	portEXIT_CRITICAL(&mux_);
+}
+
+void OpenTherm::resetDiagnostics() {
+	portENTER_CRITICAL(&mux_);
+	rx_capture_count_ = 0;
+	rx_decode_success_count_ = 0;
+	rx_decode_error_count_ = 0;
+	rx_queue_overflow_count_ = 0;
+	tx_queued_count_ = 0;
+	tx_completed_count_ = 0;
+	tx_error_count_ = 0;
+	for (size_t i = 0; i < DRIVER_ERROR_COUNT; ++i) {
+		driver_error_counts_[i] = 0;
+	}
+	last_driver_error_ = DRIVER_ERROR_NONE;
+	portEXIT_CRITICAL(&mux_);
+}
+
 void OpenTherm::setIdleState() {
 	gpio_set_level(static_cast<gpio_num_t>(outPin), 1);
 }
@@ -128,6 +188,7 @@ void OpenTherm::reset_receive_state_() {
 	response = 0;
 	responseStatus = OpenThermResponseStatus::NONE;
 	delay_until_ts_ = 0;
+	last_rx_frame_end_cycles_ = 0;
 }
 
 bool OpenTherm::init_tx_channel_() {
@@ -332,9 +393,13 @@ bool IRAM_ATTR OpenTherm::queue_rx_frame_(const rmt_symbol_word_t *symbols, size
 	}
 
 	portENTER_CRITICAL_ISR(&mux_);
+	rx_capture_count_++;
 	const uint8_t next_head = static_cast<uint8_t>((rx_frame_head_ + 1U) % RX_FRAME_QUEUE_SIZE);
 	if (next_head == rx_frame_tail_) {
 		edge_overflow_ = true;
+		rx_queue_overflow_count_++;
+		driver_error_counts_[DRIVER_ERROR_EDGE_OVERFLOW]++;
+		last_driver_error_ = DRIVER_ERROR_EDGE_OVERFLOW;
 		portEXIT_CRITICAL_ISR(&mux_);
 		return false;
 	}
@@ -479,15 +544,20 @@ void OpenTherm::process_rmt_frame_(const RxFrame &frame) {
 	if (frame.symbol_count == 0) {
 		return;
 	}
+	last_rx_frame_end_cycles_ = frame.done_ts_cycles;
 	unsigned long decoded_frame = 0;
 	OpenThermDriverError error = OpenThermDriverError::DRIVER_ERROR_NONE;
 	if (!decode_rmt_frame_(frame, decoded_frame, error)) {
+		rx_decode_error_count_++;
+		record_driver_error_(error);
 		response = 0;
 		responseTimestamp = frame.done_ts_cycles;
 		responseStatus = OpenThermResponseStatus::INVALID;
+		status = OpenThermStatus::RESPONSE_INVALID;
 		return;
 	}
 
+	rx_decode_success_count_++;
 	response = decoded_frame;
 	responseTimestamp = frame.done_ts_cycles;
 	status = OpenThermStatus::RESPONSE_READY;
@@ -527,7 +597,10 @@ bool IRAM_ATTR OpenTherm::rx_done_callback_(rmt_channel_handle_t, const rmt_rx_d
 bool IRAM_ATTR OpenTherm::tx_done_callback_(rmt_channel_handle_t, const rmt_tx_done_event_data_t *, void *user_ctx) {
 	auto *instance = static_cast<OpenTherm *>(user_ctx);
 	if (instance != nullptr) {
+		portENTER_CRITICAL_ISR(&instance->mux_);
 		instance->tx_complete_ = true;
+		instance->tx_completed_count_++;
+		portEXIT_CRITICAL_ISR(&instance->mux_);
 	}
 	return false;
 }
@@ -539,6 +612,8 @@ bool OpenTherm::queue_frame_tx_(unsigned long frame) {
 	return false;
 #else
 	if (!tx_rmt_ready_ || tx_channel_ == nullptr || tx_encoder_ == nullptr) {
+		tx_error_count_++;
+		record_driver_error_(DRIVER_ERROR_TX_UNAVAILABLE);
 		return false;
 	}
 
@@ -575,9 +650,12 @@ bool OpenTherm::queue_frame_tx_(unsigned long frame) {
 	if (err != ESP_OK) {
 		tx_in_progress_ = false;
 		tx_complete_ = false;
+		tx_error_count_++;
+		record_driver_error_(DRIVER_ERROR_TX_QUEUE_FAILED);
 		ESP_LOGW(TAG, "Failed to queue TX frame: %s", esp_err_to_name(err));
 		return false;
 	}
+	tx_queued_count_++;
 	return true;
 #endif
 }

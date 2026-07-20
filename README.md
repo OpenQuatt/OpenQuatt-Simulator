@@ -60,6 +60,8 @@ The deterministic boiler model can also be tested without ESPHome or hardware:
 ```sh
 c++ -std=c++17 -Wall -Wextra -Werror tests/boiler_simulator_model_test.cpp -o /tmp/boiler_simulator_model_test
 /tmp/boiler_simulator_model_test
+c++ -std=c++17 -Wall -Wextra -Werror tests/opentherm_response_scheduler_test.cpp -o /tmp/opentherm_response_scheduler_test
+/tmp/opentherm_response_scheduler_test
 ```
 
 ## Simulator behaviour
@@ -84,6 +86,7 @@ modulation.
 The web controls provide:
 
 - complete response loss and recovery;
+- an adjustable response delay from 20 to 700 ms, with 30 ms as the default;
 - generic fault and diagnostic indications;
 - service request and lockout-reset capability;
 - low-water-pressure, flame, air-pressure and overtemperature faults;
@@ -95,15 +98,50 @@ The web controls provide:
 The yellow LED indicates a fresh master Status message. The red LED indicates
 a simulated fault or diagnostic condition.
 
+## OpenTherm timing diagnostics
+
+The simulator waits for the configured `OpenTherm response delay` after the
+end of a valid master frame before queueing its response. The allowed range
+keeps the response inside the OpenTherm slave response window while leaving a
+margin below its upper boundary.
+
+The diagnostic entities distinguish the receive, scheduling and transmit
+stages:
+
+- `OpenTherm RX capture count` counts frames captured by RMT;
+- `OpenTherm invalid request count` counts decoded frames rejected by parity or
+  message validation, plus frames rejected by the RMT decoder;
+- `OpenTherm RX decode error count` and `OpenTherm RX queue overflow count`
+  isolate receive-driver failures;
+- the RX glitch-reject, start-bit and timing-error counters split decoder
+  failures into actionable classes;
+- `OpenTherm response queued count`, `OpenTherm TX completed count` and the
+  queue/error counters show whether a generated response reached and completed
+  RMT transmission;
+- the response-turnaround sensors report elapsed time from the captured end of
+  the request to queueing the response;
+- `OpenTherm last driver error` identifies the latest low-level failure class.
+
+Use `Reset OpenTherm diagnostics` immediately before a measurement interval.
+Resetting diagnostics does not interrupt an already scheduled response.
+
 ## Suggested HIL sequence
 
-1. Boot with responses enabled and no heat request.
-2. Confirm that the master detects the link and reads the static capabilities.
-3. Send CH demand and verify ignition, `CH active`, flame and `TSet` tracking.
-4. Disable responses and verify link-loss handling on the master.
-5. Restore responses and confirm that no stale master command is reused.
-6. Inject each invalid telemetry field, fault flag and DHW state.
-7. Repeat across master reboot and OTA.
+1. Boot with responses enabled, a 30 ms response delay and no heat request.
+2. Reset the OpenTherm diagnostics and confirm that the master detects the link
+   and reads the static capabilities.
+3. Observe a fixed measurement interval. RX overflow, response overlap,
+   response queue and TX errors must remain zero. Correlate any RX decoder
+   rejects with a master retry or timeout; short idle-bus captures can otherwise
+   look like requests. Confirm that queued and completed responses remain
+   aligned after allowing for one in-flight frame.
+4. Send CH demand and verify ignition, `CH active`, flame and `TSet` tracking.
+5. Repeat the measurement after cold boots of simulator and master.
+6. If receive errors remain, repeat at 20 and 50 ms and compare the counters.
+7. Disable responses and verify link-loss handling on the master.
+8. Restore responses and confirm that no stale master command is reused.
+9. Inject each invalid telemetry field, fault flag and DHW state.
+10. Repeat across master reboot and OTA.
 
 ## License and provenance
 

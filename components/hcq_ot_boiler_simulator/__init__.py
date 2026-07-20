@@ -10,6 +10,7 @@ CONF_IN_PIN = "in_pin"
 CONF_OUT_PIN = "out_pin"
 CONF_ENABLED = "enabled"
 CONF_RESPONSE_ENABLED = "response_enabled"
+CONF_RESPONSE_DELAY_MS = "response_delay_ms"
 CONF_DHW_PRESENT = "dhw_present"
 CONF_CONTROL_TYPE_MODULATING = "control_type_modulating"
 CONF_COOLING_SUPPORTED = "cooling_supported"
@@ -33,6 +34,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_OUT_PIN): pins.internal_gpio_output_pin_number,
             cv.Optional(CONF_ENABLED, True): cv.boolean,
             cv.Optional(CONF_RESPONSE_ENABLED, True): cv.boolean,
+            cv.Optional(CONF_RESPONSE_DELAY_MS, 30): cv.int_range(min=20, max=700),
             cv.Optional(CONF_DHW_PRESENT, True): cv.boolean,
             cv.Optional(CONF_CONTROL_TYPE_MODULATING, True): cv.boolean,
             cv.Optional(CONF_COOLING_SUPPORTED, False): cv.boolean,
@@ -75,6 +77,7 @@ async def to_code(config):
     cg.add(var.set_out_pin(config[CONF_OUT_PIN]))
     cg.add(var.set_enabled(config[CONF_ENABLED]))
     cg.add(var.set_response_enabled(config[CONF_RESPONSE_ENABLED]))
+    cg.add(var.set_response_delay_ms(config[CONF_RESPONSE_DELAY_MS]))
     cg.add(var.set_dhw_present(config[CONF_DHW_PRESENT]))
     cg.add(var.set_control_type_modulating(config[CONF_CONTROL_TYPE_MODULATING]))
     cg.add(var.set_cooling_supported(config[CONF_COOLING_SUPPORTED]))
