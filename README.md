@@ -118,6 +118,10 @@ stages:
 - `OpenTherm response queued count`, `OpenTherm TX completed count` and the
   queue/error counters show whether a generated response reached and completed
   RMT transmission;
+- `OpenTherm consecutive duplicate request count` records immediate retries of
+  the same request ID. After a master response timeout, an increment proves the
+  simulator received the original request; no increment means the original
+  request did not reach the simulator;
 - the response-turnaround sensors report elapsed time from the captured end of
   the request to queueing the response;
 - `OpenTherm last driver error` identifies the latest low-level failure class.

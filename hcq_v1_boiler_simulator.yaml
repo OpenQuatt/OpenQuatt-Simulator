@@ -518,6 +518,28 @@ sensor:
       return static_cast<float>(id(boiler_simulator)->get_invalid_request_count());
 
   - platform: template
+    name: "OpenTherm consecutive duplicate request count"
+    icon: mdi:message-arrow-left-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(
+          id(boiler_simulator)->get_consecutive_duplicate_request_count());
+
+  - platform: template
+    name: "Last consecutive duplicate request ID"
+    icon: mdi:identifier
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const int request_id =
+          id(boiler_simulator)->get_last_consecutive_duplicate_request_id();
+      return request_id >= 0 ? static_cast<float>(request_id) : NAN;
+
+  - platform: template
     name: "OpenTherm RX capture count"
     icon: mdi:download-network-outline
     accuracy_decimals: 0

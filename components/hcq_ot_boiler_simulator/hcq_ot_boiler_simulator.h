@@ -83,6 +83,12 @@ class HCQOTBoilerSimulator : public PollingComponent
   uint32_t get_request_count() const { return request_count_; }
   uint32_t get_invalid_request_count() const { return invalid_request_count_; }
   int get_last_request_id() const { return last_request_id_; }
+  uint32_t get_consecutive_duplicate_request_count() const {
+    return consecutive_duplicate_request_count_;
+  }
+  int get_last_consecutive_duplicate_request_id() const {
+    return last_consecutive_duplicate_request_id_;
+  }
   uint32_t get_last_request_age_ms() const;
   uint32_t get_response_delay_ms() const { return response_scheduler_.delay_ms(); }
   uint32_t get_response_scheduled_count() const { return response_scheduler_.scheduled_count(); }
@@ -223,6 +229,8 @@ class HCQOTBoilerSimulator : public PollingComponent
   uint32_t request_count_ = 0;
   uint32_t invalid_request_count_ = 0;
   int last_request_id_ = -1;
+  uint32_t consecutive_duplicate_request_count_ = 0;
+  int last_consecutive_duplicate_request_id_ = -1;
   OpenTherm *opentherm_ = nullptr;
   hcq::ot_sim::OpenThermResponseScheduler response_scheduler_{};
 

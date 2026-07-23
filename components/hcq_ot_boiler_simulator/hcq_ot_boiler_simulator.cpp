@@ -98,6 +98,8 @@ void HCQOTBoilerSimulator::reset_protocol_diagnostics() {
   request_count_ = 0;
   invalid_request_count_ = 0;
   last_request_id_ = -1;
+  consecutive_duplicate_request_count_ = 0;
+  last_consecutive_duplicate_request_id_ = -1;
   last_request_ms_ = 0;
   response_scheduler_.reset_diagnostics();
   if (opentherm_ != nullptr) {
@@ -277,6 +279,10 @@ void HCQOTBoilerSimulator::process_request_(unsigned long request,
   const uint16_t data = static_cast<uint16_t>(request);
   last_request_ms_ = now_millis();
   request_count_++;
+  if (last_request_id_ == static_cast<int>(id)) {
+    consecutive_duplicate_request_count_++;
+    last_consecutive_duplicate_request_id_ = static_cast<int>(id);
+  }
   last_request_id_ = static_cast<int>(id);
   parse_request_(type, id, data);
 
