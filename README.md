@@ -206,6 +206,20 @@ Malformed protocol injection intentionally produces frames a normal Modbus
 client should reject. Disable all injections before interpreting normal timing
 or functional results.
 
+## OpenTherm start-sequence diagnostics
+
+The boiler simulator records every valid CH-enable rising edge and whether it
+was immediately preceded by a valid ID1/TSet write. The diagnostic entities
+retain the preceding request ID, TSet and frame-end-to-frame-end interval after
+normal polling has moved on. Resetting diagnostics deliberately drops that
+request history, so a reset between ID1 and ID0 cannot create a false match.
+
+For a prioritized-start test, reset the OpenTherm diagnostics with CH Enable
+off, trigger one normal start, and require one rising edge with a finite
+TSet-to-CH-enable interval and previous request ID `1`. These diagnostics
+describe the simulated OpenTherm exchange; they are not proof of a real boiler
+startup sequence.
+
 ## Register data and generation
 
 These files are the editable sources of truth:
@@ -245,6 +259,8 @@ c++ -std=c++17 -Wall -Wextra -Werror tests/boiler_simulator_model_test.cpp -o /t
 /tmp/boiler_model_test
 c++ -std=c++17 -Wall -Wextra -Werror tests/opentherm_response_scheduler_test.cpp -o /tmp/ot_scheduler_test
 /tmp/ot_scheduler_test
+c++ -std=c++17 -Wall -Wextra -Werror tests/opentherm_start_sequence_diagnostics_test.cpp -o /tmp/ot_start_sequence_test
+/tmp/ot_start_sequence_test
 c++ -std=c++17 -Wall -Wextra -Werror tests/quatt_odu_register_contract_test.cpp -o /tmp/odu_contract_test
 /tmp/odu_contract_test
 c++ -std=c++17 -Wall -Wextra -Werror tests/quatt_odu_fingerprint_test.cpp -o /tmp/odu_fingerprint_test

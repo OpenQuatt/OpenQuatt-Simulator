@@ -529,6 +529,68 @@ sensor:
           id(boiler_simulator)->get_consecutive_duplicate_request_count());
 
   - platform: template
+    name: "OpenTherm CH Enable rising edge count"
+    icon: mdi:radiator
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(
+          id(boiler_simulator)->get_ch_enable_rising_count());
+
+  - platform: template
+    name: "OpenTherm CH Enable rising edge after TSet count"
+    icon: mdi:message-check-outline
+    accuracy_decimals: 0
+    state_class: total_increasing
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return static_cast<float>(
+          id(boiler_simulator)->get_ch_enable_rising_after_tset_count());
+
+  - platform: template
+    name: "Last CH Enable rising edge previous request ID"
+    icon: mdi:identifier
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const int request_id =
+          id(boiler_simulator)->get_last_ch_start_previous_request_id();
+      return request_id >= 0 ? static_cast<float>(request_id) : NAN;
+
+  - platform: template
+    name: "Last TSet-to-CH-Enable interval"
+    icon: mdi:timer-arrow
+    unit_of_measurement: "ms"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      if (!id(boiler_simulator)->has_last_ch_start_tset_sequence()) {
+        return NAN;
+      }
+      return static_cast<float>(
+                 id(boiler_simulator)
+                     ->get_last_tset_to_ch_enable_interval_us()) /
+             1000.0f;
+
+  - platform: template
+    name: "Last CH Enable rising edge TSet"
+    icon: mdi:thermometer-chevron-up
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return id(boiler_simulator)->has_last_ch_start_tset_sequence()
+                 ? id(boiler_simulator)->get_last_ch_start_tset()
+                 : NAN;
+
+  - platform: template
     name: "Last consecutive duplicate request ID"
     icon: mdi:identifier
     accuracy_decimals: 0

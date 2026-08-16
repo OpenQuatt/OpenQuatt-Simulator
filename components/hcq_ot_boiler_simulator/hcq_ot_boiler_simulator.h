@@ -11,6 +11,7 @@
 #include "OpenTherm.h"
 #include "boiler_simulator_model.h"
 #include "opentherm_response_scheduler.h"
+#include "opentherm_start_sequence_diagnostics.h"
 
 namespace esphome::hcq_ot_boiler_simulator {
 
@@ -89,6 +90,23 @@ class HCQOTBoilerSimulator : public PollingComponent
   int get_last_consecutive_duplicate_request_id() const {
     return last_consecutive_duplicate_request_id_;
   }
+  uint32_t get_ch_enable_rising_count() const {
+    return start_sequence_diagnostics_.ch_enable_rising_count();
+  }
+  uint32_t get_ch_enable_rising_after_tset_count() const {
+    return start_sequence_diagnostics_.ch_enable_rising_after_tset_count();
+  }
+  int get_last_ch_start_previous_request_id() const {
+    return start_sequence_diagnostics_.last_start_previous_request_id();
+  }
+  bool has_last_ch_start_tset_sequence() const {
+    return start_sequence_diagnostics_.has_last_start() &&
+           start_sequence_diagnostics_.last_start_preceded_by_tset();
+  }
+  uint32_t get_last_tset_to_ch_enable_interval_us() const {
+    return start_sequence_diagnostics_.last_tset_to_ch_enable_interval_us();
+  }
+  float get_last_ch_start_tset() const;
   uint32_t get_last_request_age_ms() const;
   uint32_t get_response_delay_ms() const { return response_scheduler_.delay_ms(); }
   uint32_t get_response_scheduled_count() const { return response_scheduler_.scheduled_count(); }
@@ -233,6 +251,7 @@ class HCQOTBoilerSimulator : public PollingComponent
   int last_consecutive_duplicate_request_id_ = -1;
   OpenTherm *opentherm_ = nullptr;
   hcq::ot_sim::OpenThermResponseScheduler response_scheduler_{};
+  hcq::ot_sim::OpenThermStartSequenceDiagnostics start_sequence_diagnostics_{};
 
   MasterState master_state_{};
   Capabilities capabilities_{};
