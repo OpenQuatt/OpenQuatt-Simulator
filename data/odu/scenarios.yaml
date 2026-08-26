@@ -1,0 +1,22 @@
+schema_version: 1
+
+combinations:
+  legacy_duo: {odu_1: v1, odu_2: v1_5}
+  v2_migration: {odu_1: v2_old, odu_2: v2_new}
+  new_v2_duo: {odu_1: v2_new, odu_2: v2_new}
+  mixed_unsupported: {odu_1: v1_5, odu_2: v2_new}
+
+fault_scenarios:
+  none: {fault_words: [0, 0, 0]}
+  compressor_oil_return: {fault_words: [0x0008, 0, 0], classification: protection}
+  high_pressure_lock: {fault_words: [0, 0x0040, 0], classification: fault}
+  pump_failure: {fault_words: [0, 0, 0x2000], pump_feedback_raw: 950, force_no_flow: true, classification: fault}
+  unknown_bits: {fault_words: [0xC000, 0x1200, 0xD000], classification: unknown}
+
+protocol_scenarios:
+  normal: {}
+  link_loss: {responses_enabled: false}
+  every_tenth_dropped: {drop_every_nth_request: 10}
+  extension_timeout: {timeout_start_address: 3050}
+  identity_conflict: {override_identity: [2825, 0x011E, 0x0037]}
+  missing_customer_model: {timeout_start_address: 11160}

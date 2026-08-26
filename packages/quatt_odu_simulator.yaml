@@ -1,0 +1,813 @@
+substitutions:
+  # HCQ v1.0 M2 pin map. Do not replace with HCQ v1.1 pins.
+  odu_modbus_tx_pin: GPIO40
+  odu_modbus_rx_pin: GPIO39
+  odu_modbus_flow_control_pin: GPIO38
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [quatt_odu_simulator]
+
+uart:
+  - id: odu_modbus_uart
+    tx_pin: ${odu_modbus_tx_pin}
+    rx_pin: ${odu_modbus_rx_pin}
+    baud_rate: 19200
+    data_bits: 8
+    parity: EVEN
+    stop_bits: 1
+    rx_buffer_size: 512
+
+quatt_odu_simulator:
+  id: odu_simulator
+  hub_id: odu_modbus_hub
+  uart_id: odu_modbus_uart
+  flow_control_pin: ${odu_modbus_flow_control_pin}
+  odu_1_address: ${odu_1_address}
+  odu_2_address: ${odu_2_address}
+  update_interval: 250ms
+
+globals:
+  - id: odu_1_active_profile
+    type: uint8_t
+    restore_value: true
+    initial_value: '0'
+  - id: odu_2_active_profile
+    type: uint8_t
+    restore_value: true
+    initial_value: '0'
+  - id: odu_1_active_address
+    type: uint8_t
+    restore_value: true
+    initial_value: '${odu_1_address}'
+  - id: odu_2_active_address
+    type: uint8_t
+    restore_value: true
+    initial_value: '${odu_2_address}'
+
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          id(odu_simulator)->set_address(0, id(odu_1_active_address));
+          id(odu_simulator)->set_address(1, id(odu_2_active_address));
+          id(odu_simulator)->set_profile(0, id(odu_1_active_profile));
+          id(odu_simulator)->set_profile(1, id(odu_2_active_profile));
+
+select:
+  - platform: template
+    id: odu_1_pending_profile
+    name: "ODU 1 profile (pending)"
+    icon: mdi:heat-pump-outline
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_option: Disabled
+    options: [Disabled, V1, V1.5, V2 old, V2 new]
+
+  - platform: template
+    id: odu_2_pending_profile
+    name: "ODU 2 profile (pending)"
+    icon: mdi:heat-pump-outline
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_option: Disabled
+    options: [Disabled, V1, V1.5, V2 old, V2 new]
+
+  - platform: template
+    id: odu_1_table_preset
+    name: "ODU 1 frequency-table preset"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_option: Factory
+    options: [Factory, Runtime modified]
+    on_value:
+      - lambda: |-
+          if (x == "Runtime modified")
+            id(odu_simulator)->apply_runtime_modified_preset(0);
+          else
+            id(odu_simulator)->restore_factory_tables(0);
+
+  - platform: template
+    id: odu_2_table_preset
+    name: "ODU 2 frequency-table preset"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_option: Factory
+    options: [Factory, Runtime modified]
+    on_value:
+      - lambda: |-
+          if (x == "Runtime modified")
+            id(odu_simulator)->apply_runtime_modified_preset(1);
+          else
+            id(odu_simulator)->restore_factory_tables(1);
+
+  - platform: template
+    id: odu_malformed_response
+    name: "ODU malformed response"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_option: Disabled
+    options: [Disabled, Wrong byte count, Incomplete response]
+
+switch:
+  - platform: template
+    id: odu_simulation_enabled
+    name: "Quatt ODU simulation enabled"
+    icon: mdi:heat-pump
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_responses_enabled
+    name: "ODU responses enabled"
+    icon: mdi:connection
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_1_responses_enabled
+    name: "ODU 1 responses enabled"
+    icon: mdi:connection
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_2_responses_enabled
+    name: "ODU 2 responses enabled"
+    icon: mdi:connection
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_timeout_enabled
+    name: "ODU timeout injection enabled"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_exception_enabled
+    name: "ODU exception injection enabled"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_reboot_on_read_enabled
+    name: "ODU reboot on matching request"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_fast_simulation
+    name: "ODU fast simulation mode"
+    icon: mdi:fast-forward
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+  - platform: template
+    id: odu_experimental_high_frequency_extrapolation
+    name: "ODU experimental performance extrapolation"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_1_table_write_enabled
+    name: "ODU 1 runtime-table writes"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_2_table_write_enabled
+    name: "ODU 2 runtime-table writes"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_1_defrost
+    name: "ODU 1 defrost"
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_2_defrost
+    name: "ODU 2 defrost"
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_1_no_flow
+    name: "ODU 1 force no flow"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_2_no_flow
+    name: "ODU 2 force no flow"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_1_freeze_frequency
+    name: "ODU 1 freeze measured frequency"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_2_freeze_frequency
+    name: "ODU 2 freeze measured frequency"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_1_hold_level_during_defrost
+    name: "ODU 1 hold physical level during defrost"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_2_hold_level_during_defrost
+    name: "ODU 2 hold physical level during defrost"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+binary_sensor:
+  - platform: template
+    name: "ODU 1 high-frequency performance synthetic"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(0).state().high_frequency_performance_synthetic;
+  - platform: template
+    name: "ODU 2 high-frequency performance synthetic"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(1).state().high_frequency_performance_synthetic;
+  - platform: template
+    name: "ODU 1 frequency table dirty"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(0).state().table_dirty;
+  - platform: template
+    name: "ODU 2 frequency table dirty"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(1).state().table_dirty;
+
+number:
+  - platform: template
+    id: odu_1_pending_address
+    name: "ODU 1 Modbus address (pending)"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: ${odu_1_address}
+    min_value: 1
+    max_value: 247
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_2_pending_address
+    name: "ODU 2 Modbus address (pending)"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: ${odu_2_address}
+    min_value: 1
+    max_value: 247
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_response_delay_ms
+    name: "Modbus response delay"
+    unit_of_measurement: ms
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 500
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_drop_every_nth
+    name: "Drop every Nth ODU request"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 1000
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_timeout_start_address
+    name: "ODU timeout start address"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 3050
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_exception_start_address
+    name: "ODU exception start address"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 3050
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_exception_code
+    name: "ODU Modbus exception code"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 4
+    min_value: 1
+    max_value: 11
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_malformed_start_address
+    name: "ODU malformed response start address"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 3050
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_reboot_start_address
+    name: "ODU reboot request start address"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 3000
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_1_outside_temperature
+    name: "ODU 1 outside temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 7
+    min_value: -25
+    max_value: 45
+    step: 0.5
+
+  - platform: template
+    id: odu_2_outside_temperature
+    name: "ODU 2 outside temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 7
+    min_value: -25
+    max_value: 45
+    step: 0.5
+
+  - platform: template
+    id: odu_1_water_in_temperature
+    name: "ODU 1 water-in temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 30
+    min_value: 5
+    max_value: 60
+    step: 0.5
+
+  - platform: template
+    id: odu_2_water_in_temperature
+    name: "ODU 2 water-in temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    optimistic: true
+    restore_value: true
+    initial_value: 30
+    min_value: 5
+    max_value: 60
+    step: 0.5
+
+  - platform: template
+    id: odu_1_fault_word_1
+    name: "ODU 1 fault word 2119"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_1_fault_word_2
+    name: "ODU 1 fault word 2120"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_1_fault_word_3
+    name: "ODU 1 fault word 2121"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_2_fault_word_1
+    name: "ODU 2 fault word 2119"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_2_fault_word_2
+    name: "ODU 2 fault word 2120"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_2_fault_word_3
+    name: "ODU 2 fault word 2121"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+sensor:
+  - platform: template
+    name: "Simulator free internal heap"
+    unit_of_measurement: B
+    entity_category: diagnostic
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return id(odu_simulator)->free_internal_heap();
+  - platform: template
+    name: "Simulator minimum internal heap"
+    unit_of_measurement: B
+    entity_category: diagnostic
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return id(odu_simulator)->minimum_internal_heap();
+  - platform: template
+    name: "Simulator largest internal heap block"
+    unit_of_measurement: B
+    entity_category: diagnostic
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return id(odu_simulator)->largest_internal_heap_block();
+  - platform: template
+    name: "Simulator loop stack high-watermark"
+    unit_of_measurement: B
+    entity_category: diagnostic
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return id(odu_simulator)->loop_stack_high_watermark_bytes();
+  - platform: template
+    name: "ODU 1 requested physical level"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().requested_physical_level;
+  - platform: template
+    name: "ODU 1 accepted physical level"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().accepted_physical_level;
+  - platform: template
+    name: "ODU 1 demand frequency"
+    unit_of_measurement: Hz
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().target_frequency_hz;
+  - platform: template
+    name: "ODU 1 measured frequency"
+    unit_of_measurement: Hz
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().measured_frequency_hz;
+  - platform: template
+    name: "ODU 1 flow"
+    unit_of_measurement: L/h
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().flow_lph;
+  - platform: template
+    name: "ODU 1 thermal power"
+    unit_of_measurement: W
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().thermal_power_w;
+  - platform: template
+    name: "ODU 1 electrical power"
+    unit_of_measurement: W
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().electrical_power_w;
+  - platform: template
+    name: "ODU 1 Modbus requests"
+    icon: mdi:counter
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().protocol.request_count;
+  - platform: template
+    name: "ODU 1 extension reads on legacy"
+    icon: mdi:alert-outline
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().protocol.legacy_extension_read_violations;
+  - platform: template
+    name: "ODU 2 requested physical level"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().requested_physical_level;
+  - platform: template
+    name: "ODU 2 accepted physical level"
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().accepted_physical_level;
+  - platform: template
+    name: "ODU 2 demand frequency"
+    unit_of_measurement: Hz
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().target_frequency_hz;
+  - platform: template
+    name: "ODU 2 measured frequency"
+    unit_of_measurement: Hz
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().measured_frequency_hz;
+  - platform: template
+    name: "ODU 2 flow"
+    unit_of_measurement: L/h
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().flow_lph;
+  - platform: template
+    name: "ODU 2 thermal power"
+    unit_of_measurement: W
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().thermal_power_w;
+  - platform: template
+    name: "ODU 2 electrical power"
+    unit_of_measurement: W
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().electrical_power_w;
+  - platform: template
+    name: "ODU 2 Modbus requests"
+    icon: mdi:counter
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().protocol.request_count;
+  - platform: template
+    name: "ODU 2 extension reads on legacy"
+    icon: mdi:alert-outline
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().protocol.legacy_extension_read_violations;
+
+text_sensor:
+  - platform: template
+    name: "ODU 1 diagnostics"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const auto &s = id(odu_simulator)->model(0).state();
+      const uint32_t age = s.protocol.last_request_ms == 0 ? UINT32_MAX : millis() - s.protocol.last_request_ms;
+      char text[240];
+      snprintf(text, sizeof(text), "addr=%u profile=%s mode=%u req=%lu read=%lu write=%lu drop=%lu exc=%lu bad_addr=%lu bad_write=%lu cap=%lu maxF=%u age_ms=%lu last=FC%u R%u/%u W%u=%u",
+               static_cast<unsigned>(id(odu_simulator)->get_address(0)),
+               esphome::quatt_odu_simulator::profile_definition(s.profile).label,
+               static_cast<unsigned>(s.active_mode), static_cast<unsigned long>(s.protocol.request_count),
+               static_cast<unsigned long>(s.protocol.read_count), static_cast<unsigned long>(s.protocol.write_count),
+               static_cast<unsigned long>(s.protocol.dropped_response_count),
+               static_cast<unsigned long>(s.protocol.exception_count),
+               static_cast<unsigned long>(s.protocol.invalid_address_count),
+               static_cast<unsigned long>(s.protocol.invalid_write_count),
+               static_cast<unsigned long>(s.protocol.level_capability_violations),
+               static_cast<unsigned>(s.protocol.highest_requested_level), static_cast<unsigned long>(age),
+               static_cast<unsigned>(s.protocol.last_function_code),
+               static_cast<unsigned>(s.protocol.last_start_address),
+               static_cast<unsigned>(s.protocol.last_register_count),
+               static_cast<unsigned>(s.protocol.last_write_address),
+               static_cast<unsigned>(s.protocol.last_write_value));
+      return {text};
+  - platform: template
+    name: "ODU 2 diagnostics"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const auto &s = id(odu_simulator)->model(1).state();
+      const uint32_t age = s.protocol.last_request_ms == 0 ? UINT32_MAX : millis() - s.protocol.last_request_ms;
+      char text[240];
+      snprintf(text, sizeof(text), "addr=%u profile=%s mode=%u req=%lu read=%lu write=%lu drop=%lu exc=%lu bad_addr=%lu bad_write=%lu cap=%lu maxF=%u age_ms=%lu last=FC%u R%u/%u W%u=%u",
+               static_cast<unsigned>(id(odu_simulator)->get_address(1)),
+               esphome::quatt_odu_simulator::profile_definition(s.profile).label,
+               static_cast<unsigned>(s.active_mode), static_cast<unsigned long>(s.protocol.request_count),
+               static_cast<unsigned long>(s.protocol.read_count), static_cast<unsigned long>(s.protocol.write_count),
+               static_cast<unsigned long>(s.protocol.dropped_response_count),
+               static_cast<unsigned long>(s.protocol.exception_count),
+               static_cast<unsigned long>(s.protocol.invalid_address_count),
+               static_cast<unsigned long>(s.protocol.invalid_write_count),
+               static_cast<unsigned long>(s.protocol.level_capability_violations),
+               static_cast<unsigned>(s.protocol.highest_requested_level), static_cast<unsigned long>(age),
+               static_cast<unsigned>(s.protocol.last_function_code),
+               static_cast<unsigned>(s.protocol.last_start_address),
+               static_cast<unsigned>(s.protocol.last_register_count),
+               static_cast<unsigned>(s.protocol.last_write_address),
+               static_cast<unsigned>(s.protocol.last_write_value));
+      return {text};
+
+button:
+  - platform: template
+    name: "Apply ODU profiles and addresses, then reboot"
+    icon: mdi:restart-alert
+    entity_category: config
+    on_press:
+      - if:
+          condition:
+            lambda: |-
+              return lroundf(id(odu_1_pending_address).state) !=
+                     lroundf(id(odu_2_pending_address).state);
+          then:
+            - lambda: |-
+                const auto decode = [](const std::string &option) -> uint8_t {
+                  if (option == "V1") return 1;
+                  if (option == "V1.5") return 2;
+                  if (option == "V2 old") return 3;
+                  if (option == "V2 new") return 4;
+                  return 0;
+                };
+                id(odu_1_active_profile) = decode(id(odu_1_pending_profile).current_option());
+                id(odu_2_active_profile) = decode(id(odu_2_pending_profile).current_option());
+                id(odu_1_active_address) = lroundf(id(odu_1_pending_address).state);
+                id(odu_2_active_address) = lroundf(id(odu_2_pending_address).state);
+            - delay: 2s
+            - button.press: restart_button
+
+  - platform: template
+    name: "Reset ODU diagnostics"
+    icon: mdi:counter
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(odu_simulator)->reset_diagnostics();
+          id(odu_modbus_hub)->reset_diagnostics();
+
+  - platform: template
+    name: "ODU 1 restore factory tables"
+    entity_category: config
+    on_press:
+      - lambda: id(odu_simulator)->restore_factory_tables(0);
+
+  - platform: template
+    name: "ODU 2 restore factory tables"
+    entity_category: config
+    on_press:
+      - lambda: id(odu_simulator)->restore_factory_tables(1);
+
+  - platform: restart
+    id: restart_button
+    name: "Restart system simulator"
+    entity_category: diagnostic
+
+interval:
+  - interval: 500ms
+    then:
+      - lambda: |-
+          auto &simulator = *id(odu_simulator);
+          simulator.set_simulation_enabled(id(odu_simulation_enabled).state);
+          simulator.set_responses_enabled(id(odu_responses_enabled).state);
+          simulator.set_odu_responses_enabled(0, id(odu_1_responses_enabled).state);
+          simulator.set_odu_responses_enabled(1, id(odu_2_responses_enabled).state);
+          simulator.set_outside_temperature(0, id(odu_1_outside_temperature).state);
+          simulator.set_outside_temperature(1, id(odu_2_outside_temperature).state);
+          simulator.set_water_in_temperature(0, id(odu_1_water_in_temperature).state);
+          simulator.set_water_in_temperature(1, id(odu_2_water_in_temperature).state);
+          simulator.set_table_write_enabled(0, id(odu_1_table_write_enabled).state);
+          simulator.set_table_write_enabled(1, id(odu_2_table_write_enabled).state);
+          simulator.set_defrost(0, id(odu_1_defrost).state);
+          simulator.set_defrost(1, id(odu_2_defrost).state);
+          simulator.set_force_no_flow(0, id(odu_1_no_flow).state);
+          simulator.set_force_no_flow(1, id(odu_2_no_flow).state);
+          simulator.set_freeze_frequency(0, id(odu_1_freeze_frequency).state);
+          simulator.set_freeze_frequency(1, id(odu_2_freeze_frequency).state);
+          simulator.set_hold_level_during_defrost(0, id(odu_1_hold_level_during_defrost).state);
+          simulator.set_hold_level_during_defrost(1, id(odu_2_hold_level_during_defrost).state);
+          simulator.set_fault_word(0, 0, lroundf(id(odu_1_fault_word_1).state));
+          simulator.set_fault_word(0, 1, lroundf(id(odu_1_fault_word_2).state));
+          simulator.set_fault_word(0, 2, lroundf(id(odu_1_fault_word_3).state));
+          simulator.set_fault_word(1, 0, lroundf(id(odu_2_fault_word_1).state));
+          simulator.set_fault_word(1, 1, lroundf(id(odu_2_fault_word_2).state));
+          simulator.set_fault_word(1, 2, lroundf(id(odu_2_fault_word_3).state));
+
+          auto &hub = *id(odu_modbus_hub);
+          hub.set_response_delay_ms(lroundf(id(odu_response_delay_ms).state));
+          hub.set_drop_every_nth(lroundf(id(odu_drop_every_nth).state));
+          hub.set_timeout_injection(id(odu_timeout_enabled).state,
+                                    lroundf(id(odu_timeout_start_address).state));
+          hub.set_exception_injection(id(odu_exception_enabled).state,
+                                      lroundf(id(odu_exception_start_address).state),
+                                      lroundf(id(odu_exception_code).state));
+          auto malformed = esphome::quatt_odu_simulator::MalformedResponseMode::NONE;
+          if (id(odu_malformed_response).current_option() == "Wrong byte count")
+            malformed = esphome::quatt_odu_simulator::MalformedResponseMode::WRONG_BYTE_COUNT;
+          else if (id(odu_malformed_response).current_option() == "Incomplete response")
+            malformed = esphome::quatt_odu_simulator::MalformedResponseMode::INCOMPLETE_RESPONSE;
+          hub.set_malformed_injection(malformed, lroundf(id(odu_malformed_start_address).state));
+          hub.set_reboot_injection(id(odu_reboot_on_read_enabled).state,
+                                   lroundf(id(odu_reboot_start_address).state));
+          for (uint8_t index = 0; index < 2; index++) {
+            auto &settings = simulator.model(index).mutable_settings();
+            settings.experimental_high_frequency_extrapolation =
+                id(odu_experimental_high_frequency_extrapolation).state;
+            if (id(odu_fast_simulation).state) {
+              settings.compressor_start_delay_s = 0.25f;
+              settings.minimum_runtime_s = 0.5f;
+              settings.stop_delay_s = 0.25f;
+              settings.ramp_up_hz_s = 100.0f;
+              settings.ramp_down_hz_s = 100.0f;
+            } else {
+              settings.compressor_start_delay_s = 2.0f;
+              settings.minimum_runtime_s = 5.0f;
+              settings.stop_delay_s = 1.0f;
+              settings.ramp_up_hz_s = 12.0f;
+              settings.ramp_down_hz_s = 20.0f;
+            }
+          }

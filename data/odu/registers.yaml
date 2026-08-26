@@ -1,0 +1,79 @@
+schema_version: 1
+profiles: [v1, v1_5, v2_old, v2_new]
+confidence_classes: [observed, documented, controller_contract, synthetic, unknown]
+
+defaults:
+  type: u16
+  width_words: 1
+  profiles: [v1, v1_5, v2_old, v2_new]
+  evidence:
+    source: OpenQuatt
+    reference: openquatt/oq_HP_io.yaml
+
+registers:
+  - {address: 1999, name: compressor_level, access: read_write, unit: F-level, scale: 1, value_source: state.accepted_physical_level, allowed: profile_cap, persistence: ram, confidence: controller_contract}
+  - {address: 2006, name: silent_mode, access: read_write, unit: boolean, scale: 1, value_source: state.silent_mode, allowed: [0, 1], persistence: ram, confidence: controller_contract}
+  - {address: 2010, name: pump_mode, access: read_write, unit: enum, scale: 1, value_source: state.pump_request, allowed: [0, 4096], persistence: ram, confidence: controller_contract}
+  - {address: 2015, name: pump_speed_ipwm, access: read_write, unit: iPWM, scale: 1, value_source: state.pump_ipwm, allowed: 0..1000, persistence: ram, confidence: controller_contract}
+  - {address: 2099, name: active_working_mode, access: read, unit: enum, scale: 1, value_source: state.active_mode, allowed: [0, 1, 2], persistence: derived, confidence: controller_contract}
+  - {address: 2100, name: ac_voltage, access: read, unit: V, scale: 1, value_source: state.ac_voltage_v, persistence: derived, confidence: synthetic}
+  - {address: 2101, name: ac_current, access: read, unit: A, scale: 0.1, value_source: state.ac_current_a, persistence: derived, confidence: controller_contract}
+  - {address: 2102, name: compressor_frequency_demand, access: read, unit: Hz, scale: 1, value_source: state.target_frequency_hz, persistence: derived, confidence: observed}
+  - {address: 2103, name: compressor_frequency, access: read, unit: Hz, scale: 1, value_source: state.measured_frequency_hz, persistence: derived, confidence: observed}
+  - {address: 2104, name: fan_speed_max, access: read, unit: RPM, scale: 1, value_source: state.fan_speed_max_rpm, persistence: derived, confidence: controller_contract}
+  - {address: 2105, name: fan_speed, access: read, unit: RPM, scale: 1, value_source: state.fan_speed_rpm, persistence: derived, confidence: controller_contract}
+  - {address: 2106, name: reserved_2106, access: read, unit: raw, scale: 1, value_source: constant.0, persistence: fixed, confidence: unknown, reserved: true}
+  - {address: 2107, name: eev_position, access: read, unit: steps, scale: 1, value_source: state.eev_steps, persistence: derived, confidence: synthetic}
+  - {address: 2108, name: operating_status, access: read, unit: bitfield, scale: 1, value_source: state.status_2108, persistence: derived, confidence: controller_contract}
+  - {address: 2109, name: reserved_2109, access: read, unit: raw, scale: 1, value_source: constant.0, persistence: fixed, confidence: unknown, reserved: true}
+  - {address: 2110, name: outside_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.outside_temperature_c, persistence: derived, confidence: controller_contract}
+  - {address: 2111, name: evaporator_coil_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.evaporator_coil_temperature_c, persistence: derived, confidence: synthetic}
+  - {address: 2112, name: gas_discharge_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.gas_discharge_temperature_c, persistence: derived, confidence: synthetic}
+  - {address: 2113, name: gas_return_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.gas_return_temperature_c, persistence: derived, confidence: synthetic}
+  - {address: 2114, name: compressor_code, access: read, unit: raw, scale: 1, value_source: profile.compressor_code, persistence: fixed, confidence: observed}
+  - {address: 2115, name: flow_switch_status, access: read, unit: bitfield, scale: 1, value_source: state.status_2115, persistence: derived, confidence: controller_contract}
+  - {address: 2116, name: evaporator_pressure, access: read, unit: bar, scale: 0.1, value_source: state.evaporator_pressure_bar, persistence: derived, confidence: synthetic}
+  - {address: 2117, name: condenser_pressure, access: read, unit: bar, scale: 0.1, value_source: state.condenser_pressure_bar, persistence: derived, confidence: synthetic}
+  - {address: 2118, name: defrost, access: read, unit: boolean, scale: 1, value_source: state.defrost, persistence: ram, confidence: controller_contract}
+  - {address: 2119, name: protection_fault_word_1, access: read, unit: bitfield, scale: 1, value_source: 'state.fault_words[0]', persistence: scenario, confidence: controller_contract}
+  - {address: 2120, name: fault_word_2, access: read, unit: bitfield, scale: 1, value_source: 'state.fault_words[1]', persistence: scenario, confidence: controller_contract}
+  - {address: 2121, name: fault_word_3, access: read, unit: bitfield, scale: 1, value_source: 'state.fault_words[2]', persistence: scenario, confidence: controller_contract}
+  - {address: 2122, name: pcb_program, access: read, unit: raw, scale: 1, value_source: profile.pcb_program, persistence: fixed, confidence: observed}
+  - {address: 2123, name: eeprom_metadata_2123, access: read, unit: raw, scale: 1, value_source: 'fixture.metadata[0]', persistence: fixed, confidence: synthetic}
+  - {address: 2124, name: eeprom_metadata_2124, access: read, unit: raw, scale: 1, value_source: 'fixture.metadata[1]', persistence: fixed, confidence: synthetic}
+  - {address: 2125, name: firmware_metadata_2125, access: read, unit: raw, scale: 1, value_source: 'fixture.metadata[2]', persistence: fixed, confidence: synthetic}
+  - {address: 2126, name: firmware_metadata_2126, access: read, unit: raw, scale: 1, value_source: 'fixture.metadata[3]', persistence: fixed, confidence: synthetic}
+  - {address: 2127, name: control_board_item, access: read, unit: raw, scale: 1, value_source: profile.control_board_item, persistence: fixed, confidence: observed}
+  - {address: 2128, name: reserved_2128, access: read, unit: raw, scale: 1, value_source: constant.0, persistence: fixed, confidence: unknown, reserved: true}
+  - {address: 2129, name: reserved_2129, access: read, unit: raw, scale: 1, value_source: constant.0, persistence: fixed, confidence: unknown, reserved: true}
+  - {address: 2130, name: reserved_2130, access: read, unit: raw, scale: 1, value_source: constant.0, persistence: fixed, confidence: unknown, reserved: true}
+  - {address: 2131, name: condensing_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.condensing_temperature_c, persistence: derived, confidence: synthetic}
+  - {address: 2132, name: evaporating_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.evaporating_temperature_c, persistence: derived, confidence: synthetic}
+  - {address: 2133, name: water_in_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.water_in_temperature_c, persistence: derived, confidence: controller_contract}
+  - {address: 2134, name: water_out_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.water_out_temperature_c, persistence: derived, confidence: controller_contract}
+  - {address: 2135, name: inner_coil_temperature, access: read, unit: degC, scale: 0.01, offset: -30, encode: 'round(value * 100 + 3000)', value_source: state.inner_coil_temperature_c, persistence: derived, confidence: synthetic}
+  - {address: 2136, name: reserved_2136, access: read, unit: raw, scale: 1, value_source: constant.0, persistence: fixed, confidence: unknown, reserved: true}
+  - {address: 2137, name: pump_ipwm_feedback, access: read, unit: raw, scale: 1, value_source: state.pump_feedback_raw, persistence: derived, confidence: controller_contract}
+  - {address: 2138, name: water_flow, access: read, unit: L/h, scale: 0.618, value_source: state.flow_lph, persistence: derived, confidence: controller_contract}
+  - {address: 3999, name: requested_working_mode, access: read_write, unit: enum, scale: 1, value_source: state.requested_mode, allowed: [0, 1, 2], persistence: ram, confidence: controller_contract}
+  - {address: 11004, name: extended_metadata_11004, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[0]', persistence: fixed, confidence: unknown}
+  - {address: 11005, name: extended_metadata_11005, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[1]', persistence: fixed, confidence: unknown}
+  - {address: 11006, name: extended_metadata_11006, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[2]', persistence: fixed, confidence: unknown}
+  - {address: 11007, name: extended_metadata_11007, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[3]', persistence: fixed, confidence: unknown}
+  - {address: 11008, name: extended_metadata_11008, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[4]', persistence: fixed, confidence: unknown}
+  - {address: 11009, name: extended_metadata_11009, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[5]', persistence: fixed, confidence: unknown}
+  - {address: 11160, name: customer_model_word_0, access: read, unit: ASCII, scale: 1, value_source: 'profile.customer_model_words[0]', persistence: fixed, confidence: observed}
+  - {address: 11161, name: customer_model_word_1, access: read, unit: ASCII, scale: 1, value_source: 'profile.customer_model_words[1]', persistence: fixed, confidence: observed}
+
+ranges:
+  - {start: 2999, end: 3510, name: eeprom_fixture, access: read, unit: raw, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.eeprom, persistence: fixture, confidence: unknown}
+  - {start: 3000, end: 3021, name: base_frequency_table, access: read_write, unit: Hz, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: state.runtime_frequency_table, allowed: 0..120, persistence: ram_or_explicit_apply, confidence: observed}
+  - {start: 3050, end: 3069, name: v2_frequency_extension, access: read_write, unit: Hz, scale: 1, profiles: [v2_new], value_source: state.runtime_frequency_table, allowed: 0..120, persistence: ram_or_explicit_apply, confidence: controller_contract}
+  - {start: 11120, end: 11139, name: model_text, access: read, unit: ASCII, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.model_text, persistence: fixed, confidence: synthetic}
+  - {start: 11160, end: 11179, name: customer_model_text, access: read, unit: ASCII, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.customer_model_text, persistence: fixed, confidence: synthetic}
+  - {start: 11219, end: 11238, name: serial_number_text, access: read, unit: ASCII, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.synthetic_serial, persistence: fixed, confidence: synthetic}
+
+fault_bits:
+  2119: [main_line_current, compressor_phase_current, ipm_module, compressor_oil_return, high_pressure_switch, high_pressure_speed_limit, first_start_preheat, gas_discharge_temperature, evaporator_coil_temperature, ac_voltage, ambient_temperature_range, ambient_temperature_frequency_limit, low_pressure_switch, low_pressure_speed_limit, unclassified_14, unclassified_15]
+  2120: [ambient_temperature_sensor, evaporator_coil_temperature_sensor, gas_discharge_temperature_sensor, gas_return_temperature_sensor, evaporator_pressure_sensor_lock, condenser_pressure_sensor, high_pressure_switch_lock, low_pressure_switch_lock, fan_fault, unclassified_9, evaporating_pressure_lock, condenser_pressure_lock, unclassified_12, evi_pressure_sensor, evi_inlet_temperature_sensor, evi_outlet_temperature_sensor]
+  2121: [odu_master_slave_communication, odu_control_pcb_communication, compressor_phase_current_failure, compressor_phase_current_overload, compressor_driver, module_vdc_voltage, ac_current, eeprom, fan_drive_pcb, inlet_water_temperature_sensor, outlet_water_temperature_sensor, inner_coil_temperature_sensor, unclassified_12, dc_water_pump, unclassified_14, unclassified_15]

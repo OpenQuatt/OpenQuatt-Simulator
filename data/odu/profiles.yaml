@@ -1,0 +1,91 @@
+schema_version: 1
+source:
+  repository: https://github.com/OpenQuatt/OpenQuatt
+  pull_request: 534
+  revision: 89602d4f55a5241546160114cb7351b10e89f139
+
+profiles:
+  - id: disabled
+    label: Disabled
+    enabled: false
+    generation: unknown
+    max_physical_level: 0
+    compressor_code: 0
+    pcb_program: 0
+    control_board_item: 0
+    customer_model_words: [0x0000, 0x0000]
+    factory_cooling: [0]
+    factory_heating: [0]
+    confidence: synthetic
+
+  - id: v1
+    label: V1
+    enabled: true
+    generation: v1
+    max_physical_level: 10
+    compressor_code: 0
+    pcb_program: 0x0119
+    control_board_item: 0x0037
+    customer_model_words: [0x0000, 0x0000]
+    factory_cooling: [0, 30, 36, 42, 47, 52, 56, 61, 66, 71, 74]
+    factory_heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
+    confidence: observed
+
+  - id: v1_5
+    label: V1.5
+    enabled: true
+    generation: v1_5
+    max_physical_level: 10
+    compressor_code: 0
+    pcb_program: 0x011E
+    control_board_item: 0x0E37
+    customer_model_words: [0x0000, 0x0000]
+    factory_cooling: [0, 30, 36, 42, 47, 52, 56, 61, 66, 71, 74]
+    factory_heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
+    confidence: observed
+
+  - id: v2_old
+    label: V2 old model
+    enabled: true
+    generation: v2
+    max_physical_level: 10
+    compressor_code: 2825
+    pcb_program: 0x0122
+    control_board_item: 0x0E37
+    customer_model_words: [0x414D, 0x4836]
+    factory_cooling: [0, 30, 36, 42, 46, 48, 52, 56, 61, 66, 71]
+    factory_heating: [0, 20, 26, 30, 48, 55, 61, 72, 80, 85, 90]
+    confidence: observed
+
+  - id: v2_new
+    label: V2 new model
+    enabled: true
+    generation: v2
+    max_physical_level: 20
+    compressor_code: 2825
+    pcb_program: 0x0201
+    control_board_item: 0x1037
+    customer_model_words: [0x414D, 0x4836]
+    factory_cooling: [0, 20, 26, 30, 34, 36, 38, 40, 42, 44, 46, 48, 52, 54, 56, 58, 60, 64, 66, 68, 71]
+    factory_heating: [0, 20, 26, 30, 36, 40, 45, 48, 52, 55, 60, 65, 68, 72, 76, 82, 85, 90, 95, 102, 110]
+    confidence: controller_contract
+
+presets:
+  - id: factory
+    label: Factory
+    applies_to: [v1, v1_5, v2_old, v2_new]
+  - id: v1_runtime_modified
+    label: V1 runtime modified
+    applies_to: [v1]
+    cooling: [0, 20, 22, 24, 26, 28, 30, 30, 30, 30, 30]
+    heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
+  - id: v1_5_runtime_modified
+    label: V1.5 runtime modified
+    applies_to: [v1_5]
+    cooling: [0, 26, 28, 30, 32, 34, 36, 38, 40, 71, 74]
+    heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
+
+legacy_extension_fixture:
+  # Deliberately not valid frequencies. This makes accidental legacy reads visible.
+  heating: [0xA501, 0xA502, 0xA503, 0xA504, 0xA505, 0xA506, 0xA507, 0xA508, 0xA509, 0xA50A]
+  cooling: [0xC501, 0xC502, 0xC503, 0xC504, 0xC505, 0xC506, 0xC507, 0xC508, 0xC509, 0xC50A]
