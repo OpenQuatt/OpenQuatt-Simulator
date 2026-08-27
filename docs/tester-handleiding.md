@@ -161,14 +161,16 @@ OpenQuatt bestuurt de gesimuleerde pomp met:
 Alleen `2015` schrijven start de pomp niet. Het relais moet ook via `2010`
 worden ingeschakeld.
 
-Na inschakelen loopt de flow geleidelijk op volgens ongeveer:
+Quatt-iPWM werkt omgekeerd: een lagere waarde stuurt de pomp harder aan. Na
+inschakelen loopt de flow geleidelijk naar ongeveer:
 
 ```text
-flow_lph = clamp(100 + 0,75 × iPWM, 0, 1200)
+flow_lph = clamp(950 - iPWM, 0, 1200)
 ```
 
-Bij iPWM 800 is de doelflow ongeveer 700 L/h. Zodra de flow minstens 250 L/h
-is en de pomp minimaal één seconde draait, wordt de flowswitch actief.
+Bij iPWM 150 is de doelflow ongeveer 800 L/h; bij iPWM 800 ongeveer 150 L/h.
+Zodra de flow minstens 250 L/h is en de pomp minimaal één seconde draait,
+wordt de flowswitch actief.
 
 De belangrijkste feedbackregisters zijn:
 

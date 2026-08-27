@@ -28,18 +28,23 @@ int main() {
   assert(model.state().protocol.level_capability_violations == 1U);
   assert(model.write_register(3999U, 2U, 11U));
   assert(model.write_register(2010U, 4096U, 12U));
-  assert(model.write_register(2015U, 800U, 13U));
+  assert(model.write_register(2015U, 150U, 13U));
   model.mutable_settings().compressor_start_delay_s = 0.0f;
   model.mutable_settings().minimum_runtime_s = 0.0f;
   model.mutable_settings().ramp_up_hz_s = 200.0f;
-  for (int i = 0; i < 20; i++) model.update(0.25f);
+  for (int i = 0; i < 40; i++) model.update(0.25f);
   assert(model.state().target_frequency_hz == 110.0f);
   assert(model.state().measured_frequency_hz == 110.0f);
-  assert(model.state().flow_lph > 600.0f);
+  assert(model.state().flow_lph > 750.0f);
   assert(model.state().flow_switch);
   assert(model.state().water_out_temperature_c > model.state().water_in_temperature_c);
   assert(read(model, 2138U) > 0U);
-  assert(read(model, 2137U) >= 50U && read(model, 2137U) <= 750U);
+  const uint16_t high_pump_power = read(model, 2137U);
+  assert(high_pump_power >= 50U && high_pump_power <= 750U);
+  assert(model.write_register(2015U, 800U, 14U));
+  for (int i = 0; i < 40; i++) model.update(0.25f);
+  assert(model.state().flow_lph < 200.0f);
+  assert(read(model, 2137U) < high_pump_power);
 
   model.set_defrost(true);
   assert(read(model, 2118U) == 1U);

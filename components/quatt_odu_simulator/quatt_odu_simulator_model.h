@@ -49,8 +49,8 @@ struct ModelSettings {
   float minimum_runtime_s{5.0f};
   float stop_delay_s{1.0f};
   float flow_start_delay_s{1.0f};
-  float flow_offset_lph{100.0f};
-  float flow_gain_lph_per_ipwm{0.75f};
+  float flow_offset_lph{950.0f};
+  float flow_gain_lph_per_ipwm{-1.0f};
   float flow_max_lph{1200.0f};
   float water_response_tau_s{4.0f};
   float power_factor{0.92f};
@@ -673,7 +673,8 @@ class QuattOduSimulatorModel {
   uint16_t pump_feedback_raw_() const {
     if (this->state_.pump_feedback_override != 0xFFFFU) return this->state_.pump_feedback_override;
     if (!this->state_.pump_request) return 20U;
-    return static_cast<uint16_t>(std::clamp<long>(50L + lroundf(this->state_.pump_ipwm * 0.7f), 50L, 750L));
+    const long running_ipwm = std::clamp<long>(this->state_.pump_ipwm, 50L, 850L);
+    return static_cast<uint16_t>(std::clamp<long>(50L + lroundf((850L - running_ipwm) * 0.875f), 50L, 750L));
   }
 
   const char* profile_model_text_() const {
