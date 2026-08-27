@@ -18,6 +18,9 @@ Two firmware entrypoints are retained:
 | `hcq_v1_boiler_simulator.yaml` | Existing OpenTherm boiler simulator only |
 | `hcq_v1_system_simulator.yaml` | OpenTherm boiler plus dual Quatt ODU simulator |
 
+For step-by-step operation and test scenarios, see the Dutch
+[tester handleiding](docs/tester-handleiding.md).
+
 ## Hardware and wiring
 
 This firmware is only for HCQ revision 1.0. The pin map is based on the
