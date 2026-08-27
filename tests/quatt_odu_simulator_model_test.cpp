@@ -46,12 +46,15 @@ int main() {
   assert(model.state().flow_lph < 200.0f);
   assert(read(model, 2137U) < high_pump_power);
 
+  assert((read(model, 2108U) & 0x0040U) == 0U);
   model.set_defrost(true);
   assert(read(model, 2118U) == 1U);
   assert((read(model, 2108U) & 0x0010U) != 0U);
+  assert((read(model, 2108U) & 0x0040U) != 0U);
   assert(model.write_register(1999U, 5U, 20U));
   assert(model.state().accepted_physical_level == 20U);
   model.set_defrost(false);
+  assert((read(model, 2108U) & 0x0040U) == 0U);
   assert(model.state().accepted_physical_level == 5U);
 
   model.set_defrost(true);
@@ -94,6 +97,7 @@ int main() {
   model.mutable_settings().ramp_up_hz_s = 200.0f;
   model.update(0.25f);
   assert(model.state().active_mode == WorkingMode::COOLING);
+  assert((read(model, 2108U) & 0x0040U) != 0U);
   assert(model.state().target_frequency_hz == 36.0f);
   assert(model.write_register(2010U, 0U, 42U));
   for (int i = 0; i < 20; i++) model.update(0.25f);

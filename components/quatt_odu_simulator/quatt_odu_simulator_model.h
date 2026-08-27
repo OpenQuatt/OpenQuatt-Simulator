@@ -665,7 +665,7 @@ class QuattOduSimulatorModel {
     if (this->state_.outside_temperature_c < 5.0f) status |= 0x0008U;
     if (this->state_.defrost) status |= 0x0010U;
     if (this->state_.fan_speed_rpm > 700.0f) status |= 0x0020U;
-    if (this->state_.active_mode == WorkingMode::HEATING && !this->state_.defrost) status |= 0x0040U;
+    if (this->state_.active_mode == WorkingMode::COOLING || this->state_.defrost) status |= 0x0040U;
     if (this->state_.pump_request) status |= 0x0800U;
     return status;
   }
