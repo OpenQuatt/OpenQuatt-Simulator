@@ -1,4 +1,4 @@
-# HCQ Boiler and Quatt ODU Simulator
+# OpenQuatt Modbus and OpenTherm Simulator
 
 Standalone ESPHome firmware for an HCQ Q-edition revision 1.0 board. The board
 can simultaneously simulate:
@@ -6,6 +6,10 @@ can simultaneously simulate:
 - one OpenTherm boiler/slave on `OTT`;
 - two independent Quatt outdoor units on the `M2` RS485 port, normally at
   Modbus addresses 1 and 2.
+
+The combined firmware publishes compatibility contract
+`openquatt-modbus-opentherm-v1` and simulator version `v0.1.0`. HIL clients
+must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
 profile and numerical performance data are local snapshots with explicit
@@ -77,7 +81,7 @@ esphome run hcq_v1_system_simulator.yaml
 ```
 
 Without station Wi-Fi, the combined firmware starts the access point
-`HCQ System Simulator` with password `openquatt`. Use the native ESPHome web
+`OpenQuatt Simulator` with password `openquatt`. Use the native ESPHome web
 page to configure scenarios. Both ODU profiles default to `Disabled`, so the
 board does not answer as an ODU until profiles are explicitly selected.
 
@@ -125,6 +129,9 @@ Mode changes ramp the compressor to zero before restarting in the other mode.
 Pump writes control a settling flow model and the flowswitch. `2138` uses the
 OpenQuatt conversion `round(flow_lph / 0.618)`. Water-out temperature follows
 the simulated thermal power and mass flow through a first-order response.
+`ODU external system pump flow` applies the configured iPWM flow without
+requiring ODU pump-relay register `2010`; use it when the controller drives a
+separate system pump. Water-in can be set from 0.0 to 60.0 °C in 0.1 °C steps.
 Refrigerant temperatures, pressures, fan speed, EEV position and electrical
 current are deliberately synthetic but internally related.
 
@@ -213,6 +220,11 @@ c++ -std=c++17 -Wall -Wextra -Werror tests/quatt_odu_simulator_model_test.cpp -o
 c++ -std=c++17 -Wall -Wextra -Werror tests/quatt_odu_performance_model_test.cpp -o /tmp/odu_performance_test
 /tmp/odu_performance_test
 ```
+
+CI also validates the generated register contract and compiles the combined
+ESPHome firmware. Release tags use the simulator version published by
+`OpenQuatt Simulator Version`; contract changes require a new contract value,
+not only a patch-version bump.
 
 ## HIL sequence
 

@@ -100,8 +100,16 @@ int main() {
   assert((read(model, 2108U) & 0x0040U) != 0U);
   assert(model.state().target_frequency_hz == 36.0f);
   assert(model.write_register(2010U, 0U, 42U));
-  for (int i = 0; i < 20; i++) model.update(0.25f);
+  for (int i = 0; i < 40; i++) model.update(0.25f);
   assert(model.state().flow_lph < 10.0f);
   assert(!model.state().flow_switch);
+
+  model.configure(Profile::V1_5);
+  assert(model.write_register(2015U, 150U, 50U));
+  model.mutable_state().force_flow_without_relay = true;
+  for (int i = 0; i < 40; i++) model.update(0.25f);
+  assert(!model.state().pump_request);
+  assert(model.state().flow_lph > 750.0f);
+  assert(model.state().flow_switch);
   return 0;
 }

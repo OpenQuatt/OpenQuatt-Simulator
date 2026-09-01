@@ -1,5 +1,10 @@
 # Testerhandleiding HCQ Boiler- en Quatt ODU-simulator
 
+Deze handleiding hoort bij OpenQuatt Simulator `v0.1.0`, contract
+`openquatt-modbus-opentherm-v1`. Controleer beide entities vóór een HIL-run;
+een afwijkend contract betekent dat de runner en simulator niet aantoonbaar
+compatibel zijn.
+
 ## 1. Doel
 
 Deze HCQ Q-edition revision 1.0 simuleert gelijktijdig:
@@ -75,6 +80,7 @@ Controleer vóór een normale test:
 | `Drop every Nth ODU request` | 0 |
 | `Modbus response delay` | 0 ms |
 | `ODU fast simulation mode` | Off |
+| `ODU external system pump flow` | Off |
 | `ODU experimental performance extrapolation` | Off |
 | `ODU 1/2 force no flow` | Off |
 | `ODU 1/2 freeze measured frequency` | Off |
@@ -161,6 +167,10 @@ OpenQuatt bestuurt de gesimuleerde pomp met:
 Alleen `2015` schrijven start de pomp niet. Het relais moet ook via `2010`
 worden ingeschakeld.
 
+Schakel `ODU external system pump flow` in wanneer de geteste controller een
+aparte systeempomp aanstuurt en register `2010` daarom niet gebruikt. De
+simulator past dan de iPWM-flow toe zonder het ODU-pomprelais te vereisen.
+
 Quatt-iPWM werkt omgekeerd: een lagere waarde stuurt de pomp harder aan. Na
 inschakelen loopt de flow geleidelijk naar ongeveer:
 
@@ -186,6 +196,9 @@ standby. De gemeten flow loopt geleidelijk terug naar nul.
 
 `ODU 1/2 force no flow` simuleert een pomp die wordt aangestuurd maar geen flow
 levert.
+
+Voor koude-starttests is `ODU 1/2 water-in temperature` instelbaar van 0,0 tot
+60,0 °C in stappen van 0,1 °C.
 
 ## 8. Compressor, frequentie en vermogen
 

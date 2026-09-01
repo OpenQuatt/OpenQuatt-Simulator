@@ -1,6 +1,8 @@
 substitutions:
-  device_name: hcq-system-simulator
-  friendly_name: HCQ Boiler and Quatt ODU Simulator
+  device_name: openquatt-simulator
+  friendly_name: OpenQuatt Modbus and OpenTherm Simulator
+  simulator_contract: openquatt-modbus-opentherm-v1
+  simulator_version: v0.1.0
   odu_1_address: "1"
   odu_2_address: "2"
 
@@ -12,7 +14,23 @@ esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
   build_path: build/hcq_v1_system_simulator
+  project:
+    name: openquatt.simulator
+    version: ${simulator_version}
+
+text_sensor:
+  - platform: template
+    name: "OpenQuatt Simulator Contract"
+    entity_category: diagnostic
+    update_interval: 5s
+    lambda: return {"${simulator_contract}"};
+
+  - platform: template
+    name: "OpenQuatt Simulator Version"
+    entity_category: diagnostic
+    update_interval: 5s
+    lambda: return {"${simulator_version}"};
 
 wifi:
   ap:
-    ssid: "HCQ System Simulator"
+    ssid: "OpenQuatt Simulator"

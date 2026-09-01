@@ -558,10 +558,10 @@ class QuattOduSimulatorModel {
   }
 
   void update_pump_(float dt_s) {
-    const bool relay = this->state_.pump_request && !this->state_.force_flow_without_relay;
-    this->state_.pump_timer_s = relay ? this->state_.pump_timer_s + dt_s : 0.0f;
+    const bool flow_requested = this->state_.pump_request || this->state_.force_flow_without_relay;
+    this->state_.pump_timer_s = flow_requested ? this->state_.pump_timer_s + dt_s : 0.0f;
     float target_flow = 0.0f;
-    if ((relay || this->state_.force_flow_without_relay) && !this->state_.force_no_flow) {
+    if (flow_requested && !this->state_.force_no_flow) {
       target_flow =
           std::clamp(this->settings_.flow_offset_lph + this->settings_.flow_gain_lph_per_ipwm * this->state_.pump_ipwm,
                      0.0f, this->settings_.flow_max_lph);

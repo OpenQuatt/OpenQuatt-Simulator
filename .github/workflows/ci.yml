@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate generated ODU contract
+        run: python3 scripts/generate_odu_contract.py --check
+
+      - name: Compile and run host tests
+        run: |
+          set -euo pipefail
+          for source in tests/*_test.cpp; do
+            binary="${RUNNER_TEMP}/$(basename "${source}" .cpp)"
+            c++ -std=c++17 -Wall -Wextra -Werror "${source}" -o "${binary}"
+            "${binary}"
+          done
+
+  esphome-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: python3 -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Validate boiler-only firmware
+        run: esphome config hcq_v1_boiler_simulator.yaml
+
+      - name: Compile combined simulator firmware
+        run: esphome compile hcq_v1_system_simulator.yaml

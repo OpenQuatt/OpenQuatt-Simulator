@@ -180,6 +180,14 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
 
   - platform: template
+    id: odu_external_system_pump_flow
+    name: "ODU external system pump flow"
+    icon: mdi:pump
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
     id: odu_experimental_high_frequency_extrapolation
     name: "ODU experimental performance extrapolation"
     entity_category: config
@@ -414,9 +422,9 @@ number:
     optimistic: true
     restore_value: true
     initial_value: 30
-    min_value: 5
+    min_value: 0
     max_value: 60
-    step: 0.5
+    step: 0.1
 
   - platform: template
     id: odu_2_water_in_temperature
@@ -426,9 +434,9 @@ number:
     optimistic: true
     restore_value: true
     initial_value: 30
-    min_value: 5
+    min_value: 0
     max_value: 60
-    step: 0.5
+    step: 0.1
 
   - platform: template
     id: odu_1_fault_word_1
@@ -766,6 +774,10 @@ interval:
           simulator.set_defrost(1, id(odu_2_defrost).state);
           simulator.set_force_no_flow(0, id(odu_1_no_flow).state);
           simulator.set_force_no_flow(1, id(odu_2_no_flow).state);
+          simulator.model(0).mutable_state().force_flow_without_relay =
+              id(odu_external_system_pump_flow).state;
+          simulator.model(1).mutable_state().force_flow_without_relay =
+              id(odu_external_system_pump_flow).state;
           simulator.set_freeze_frequency(0, id(odu_1_freeze_frequency).state);
           simulator.set_freeze_frequency(1, id(odu_2_freeze_frequency).state);
           simulator.set_hold_level_during_defrost(0, id(odu_1_hold_level_during_defrost).state);
