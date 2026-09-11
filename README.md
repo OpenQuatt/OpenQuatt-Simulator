@@ -26,6 +26,11 @@ Two firmware entrypoints are retained:
 For step-by-step operation and test scenarios, see the Dutch
 [tester handleiding](docs/tester-handleiding.md).
 
+For the fixed desktop HIL setup, use the versioned
+[lab guide](docs/hil-lab.md), [testcase catalogue](docs/hil-testcases.md) and
+[interface catalogue](docs/hil-interface.md). The local `$hcq-hil` Codex skill
+uses these documents for repeatable, evidence-based test runs.
+
 ## Hardware and wiring
 
 This firmware is only for HCQ revision 1.0. The pin map is based on the
