@@ -11,8 +11,7 @@ naar die baseline, tenzij anders vermeld.
 2. Noteer simulatorversie, controllerfirmware en de beginwaarden van de
    OpenTherm-foutcounters.
 3. Stel op de simulator in: `Thermostat room setpoint` = 21 °C en
-   `Thermostat room temperature` = 20 °C. Deze stap is muterend en vereist
-   expliciete toestemming.
+   `Thermostat room temperature` = 20 °C.
 4. Wacht maximaal 15 seconden.
 5. Controleer op de controller: thermostaatlink OK, actuele status, Control
    setpoint, Room setpoint = 21 °C en Room temperature = 20 °C.
@@ -27,7 +26,7 @@ waarde; links en counters zijn gezond.
 **Doel:** de controller verwerkt de CH-bit van de thermostaatsimulator.
 
 1. Noteer uitgangsstatus en counters.
-2. Schakel `Thermostat CH demand` in op de simulator. Dit is muterend.
+2. Schakel `Thermostat CH demand` in op de simulator.
 3. Controleer binnen 15 seconden de actuele thermostaatstatus op de controller
    en de verwachte regelreactie volgens de actieve controllerstrategie.
 4. Schakel de vraag weer uit en controleer herstel.

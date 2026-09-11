@@ -43,12 +43,14 @@ aan.
 
 ## Muterende acties
 
-Alleen na expliciete gebruikersopdracht of een expliciet goedgekeurde testcase:
+Een opdracht als “test deze wijzigingen” of “test deze PR” autoriseert de
+normale simulatorinstellingen die nodig zijn voor relevante testcases, zoals
+CH/DHW-vraag, kamertemperatuur, setpoint en normaal ODU-gedrag. Vraag alleen
+expliciet om bevestiging voor:
 
-- simulator- of controllerinstellingen aanpassen;
-- CH/DHW-vraag, kamertemperatuur, setpoint of ODU-profiel aanpassen;
-- foutinjectie, timeout, exception of responsonderdrukking inschakelen;
-- reboot, OTA of firmwarewisseling.
+- foutinjectie, timeout, exception of responsonderdrukking;
+- reboot, OTA of firmwarewisseling;
+- een wijziging buiten de gevraagde diff of een actie op niet-labapparatuur.
 
 Een geslaagde HTTP- of UI-actie is geen testresultaat. Bevestig altijd het
 bedoelde effect in actuele controllertelemetrie en de relevante simulator- en
