@@ -11,8 +11,8 @@ namespace esphome::hcq_ot_thermostat_simulator {
 static const char *const TAG = "hcq_ot_thermostat";
 
 static uint16_t encode_f88(float value) {
-  return static_cast<uint16_t>(
-      std::clamp<long>(lroundf(value * 256.0f), 0L, 65535L));
+  const long raw = std::clamp<long>(lroundf(value * 256.0f), -32768L, 32767L);
+  return static_cast<uint16_t>(static_cast<int16_t>(raw));
 }
 
 void HCQOTThermostatSimulator::setup() {
@@ -54,19 +54,33 @@ void HCQOTThermostatSimulator::send_next_request_() {
   uint16_t data = 0U;
   OpenThermMessageID id = OpenThermMessageID::Status;
   OpenThermMessageType type = OpenThermMessageType::READ_DATA;
-  if (send_t_set_next_) {
+  switch (next_request_) {
+  case Request::STATUS:
+    data = static_cast<uint16_t>((ch_enable_ ? (1U << 8U) : 0U) |
+                                 (dhw_enable_ ? (1U << 9U) : 0U));
+    break;
+  case Request::T_SET:
     id = OpenThermMessageID::TSet;
     type = OpenThermMessageType::WRITE_DATA;
     data = encode_f88(t_set_c_);
-  } else {
-    data = static_cast<uint16_t>((ch_enable_ ? (1U << 8U) : 0U) |
-                                 (dhw_enable_ ? (1U << 9U) : 0U));
+    break;
+  case Request::T_ROOM_SET:
+    id = OpenThermMessageID::TrSet;
+    type = OpenThermMessageType::WRITE_DATA;
+    data = encode_f88(t_room_set_c_);
+    break;
+  case Request::T_ROOM:
+    id = OpenThermMessageID::Tr;
+    type = OpenThermMessageType::WRITE_DATA;
+    data = encode_f88(t_room_c_);
+    break;
   }
   const unsigned long frame = opentherm_->buildRequest(type, id, data);
   if (opentherm_->sendResponse(frame)) {
     request_count_++;
     last_request_ms_ = millis();
-    send_t_set_next_ = !send_t_set_next_;
+    next_request_ =
+        static_cast<Request>((static_cast<uint8_t>(next_request_) + 1U) % 4U);
   }
 }
 
@@ -127,7 +141,8 @@ void HCQOTThermostatSimulator::dump_config() {
   ESP_LOGCONFIG(TAG, "HCQ OpenTherm thermostat simulator:");
   ESP_LOGCONFIG(TAG, "  Master input: GPIO%u", in_pin_);
   ESP_LOGCONFIG(TAG, "  Master output: GPIO%u", out_pin_);
-  ESP_LOGCONFIG(TAG, "  Poll interval: %lu ms", static_cast<unsigned long>(poll_interval_ms_));
+  ESP_LOGCONFIG(TAG, "  Poll interval: %lu ms",
+                static_cast<unsigned long>(poll_interval_ms_));
 }
 
 void HCQOTThermostatSimulator::stop_() {

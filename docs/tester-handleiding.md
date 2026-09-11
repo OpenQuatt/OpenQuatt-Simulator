@@ -1,6 +1,6 @@
 # Testerhandleiding HCQ Boiler- en Quatt ODU-simulator
 
-Deze handleiding hoort bij OpenQuatt Simulator `v0.2.0`, contract
+Deze handleiding hoort bij OpenQuatt Simulator `v0.3.0`, contract
 `openquatt-modbus-opentherm-v1`. Controleer beide entities vóór een HIL-run;
 een afwijkend contract betekent dat de runner en simulator niet aantoonbaar
 compatibel zijn.
@@ -313,14 +313,16 @@ langere termijn gelijk op te lopen.
 ## 14. OpenTherm-thermostaatsimulator
 
 De thermostaatsimulator is een OpenTherm-master op de `OTB`-aansluiting. Hij
-stuurt afwisselend `Status` en `TSet`; standaard eenmaal per seconde. Gebruik
-hem alleen op de `OTT`-aansluiting van de controller onder test.
+stuurt `Status`, `TSet`, `TrSet` en `Tr`; standaard één bericht per seconde.
+Gebruik hem alleen op de `OTT`-aansluiting van de controller onder test.
 
 Gebruik in de webinterface:
 
 - `Thermostat CH demand` voor de CH-bit in `Status`;
 - `Thermostat DHW demand` voor de DHW-bit in `Status`;
 - `Thermostat TSet` voor de gewenste aanvoertemperatuur;
+- `Thermostat room setpoint` voor `TrSet` (ID 16);
+- `Thermostat room temperature` voor `Tr` (ID 24);
 - `Thermostat poll interval` voor de mastercyclus.
 
 `Controller CH active via thermostat`, `Controller DHW active via thermostat`,

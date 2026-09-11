@@ -2,7 +2,7 @@ substitutions:
   device_name: openquatt-simulator
   friendly_name: OpenQuatt Modbus and OpenTherm Simulator
   simulator_contract: openquatt-modbus-opentherm-v1
-  simulator_version: v0.2.0
+  simulator_version: v0.3.0
   odu_1_address: "1"
   odu_2_address: "2"
 

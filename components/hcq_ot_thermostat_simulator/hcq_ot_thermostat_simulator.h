@@ -25,6 +25,8 @@ public:
   void set_ch_enable(bool value) { ch_enable_ = value; }
   void set_dhw_enable(bool value) { dhw_enable_ = value; }
   void set_t_set(float value) { t_set_c_ = value; }
+  void set_t_room_set(float value) { t_room_set_c_ = value; }
+  void set_t_room(float value) { t_room_c_ = value; }
   void reset_diagnostics();
 
   uint32_t request_count() const { return request_count_; }
@@ -50,6 +52,13 @@ public:
 #endif
 
 protected:
+  enum class Request : uint8_t {
+    STATUS,
+    T_SET,
+    T_ROOM_SET,
+    T_ROOM,
+  };
+
   static void response_callback_(unsigned long frame,
                                  OpenThermResponseStatus status, void *context);
   void process_response_(unsigned long frame, OpenThermResponseStatus status);
@@ -65,10 +74,12 @@ protected:
   bool ch_enable_{false};
   bool dhw_enable_{false};
   float t_set_c_{20.0f};
+  float t_room_set_c_{21.0f};
+  float t_room_c_{20.0f};
   uint32_t poll_interval_ms_{1000};
   uint32_t last_request_ms_{0};
   uint32_t last_response_ms_{0};
-  bool send_t_set_next_{false};
+  Request next_request_{Request::STATUS};
   uint32_t request_count_{0};
   uint32_t response_count_{0};
   uint32_t timeout_count_{0};
