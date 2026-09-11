@@ -9,10 +9,15 @@ en mogen alleen via de beschreven bussen met elkaar verbonden zijn.
 | Rol | URL | Verwachte firmware |
 |---|---|---|
 | HCQ simulator | `http://192.168.2.63/` | OpenQuatt Simulator, contract `openquatt-modbus-opentherm-v1` |
-| Testcontroller | `http://192.168.2.86/` | OpenQuatt testcontroller |
+| Testcontroller | `http://openquatt-test.local/` (DHCP fallback: `http://192.168.2.86/`) | OpenQuatt testcontroller |
 
-De IP-adressen zijn DHCP-adressen. Als een adres wijzigt, pas deze tabel en
-`docs/hil-interface.md` samen aan voordat een testcase wordt uitgevoerd.
+De simulator-IP is een DHCP-adres. De testcontroller moet firmware draaien uit
+`configs/heatpump_controller_q/duo_wifi_hil.yaml` van het OpenQuatt-project:
+die stelt de ESPHome-naam in op `openquatt-test` en voorkomt een mDNS-conflict
+met de productiecontroller op `openquatt.local`. Gebruik tot die firmware is
+geflasht het actuele DHCP-adres als fallback. Als een adres wijzigt, pas deze
+tabel en `docs/hil-interface.md` samen aan voordat een testcase wordt
+uitgevoerd.
 
 ## Topologie
 

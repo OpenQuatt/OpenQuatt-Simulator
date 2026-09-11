@@ -10,7 +10,7 @@ De ESPHome-webservers accepteren geen `HEAD`; gebruik een gewone `GET`.
 
 ```sh
 curl -sS -o /dev/null -w '%{http_code}\n' --max-time 5 http://192.168.2.63/
-curl -sS -o /dev/null -w '%{http_code}\n' --max-time 5 http://192.168.2.86/
+curl -sS -o /dev/null -w '%{http_code}\n' --max-time 5 http://openquatt-test.local/
 ```
 
 Beide moeten `200` teruggeven. Dit bewijst alleen HTTP-bereikbaarheid, niet
@@ -20,6 +20,14 @@ Gebruik voor de standaard-preflight:
 
 ```sh
 ~/.codex/skills/hcq-hil/scripts/hil_preflight.sh
+```
+
+Vóór de HIL-testcontroller met hostname `openquatt-test` is geflasht, geef het
+huidige DHCP-adres expliciet mee:
+
+```sh
+~/.codex/skills/hcq-hil/scripts/hil_preflight.sh \
+  --controller http://192.168.2.86/
 ```
 
 Optionele afwijkende adressen:
