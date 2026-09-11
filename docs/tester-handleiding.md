@@ -1,6 +1,6 @@
 # Testerhandleiding HCQ Boiler- en Quatt ODU-simulator
 
-Deze handleiding hoort bij OpenQuatt Simulator `v0.1.0`, contract
+Deze handleiding hoort bij OpenQuatt Simulator `v0.2.0`, contract
 `openquatt-modbus-opentherm-v1`. Controleer beide entities vóór een HIL-run;
 een afwijkend contract betekent dat de runner en simulator niet aantoonbaar
 compatibel zijn.
@@ -10,6 +10,7 @@ compatibel zijn.
 Deze HCQ Q-edition revision 1.0 simuleert gelijktijdig:
 
 - één OpenTherm-cv-ketel op de `OTT`-aansluiting;
+- één OpenTherm-thermostaat op de `OTB`-aansluiting;
 - maximaal twee onafhankelijke Quatt-ODU's op de `M2`-RS485-aansluiting.
 
 De simulator produceert geen warmte en stuurt geen fysieke pomp, compressor of
@@ -22,6 +23,10 @@ protocol- en regressietests van een OpenQuatt-controller.
 
 Verbind de `OTB`-aansluiting van de controller onder test met `OTT` op de
 simulator. OpenTherm is tweedraads en niet polariteitsgevoelig.
+
+Voor een thermostaatsimulatie is de richting precies andersom: verbind `OTT`
+van de controller met `OTB` op de simulator. De twee OpenTherm-aansluitingen
+van de HCQ v1.0 zijn elektrisch gescheiden en kunnen tegelijk worden gebruikt.
 
 ### Quatt ODU / RS485
 
@@ -41,7 +46,8 @@ Let op:
 
 - sluit geen echte ODU met hetzelfde Modbusadres op deze bus aan;
 - gebruik terminatie alleen aan de twee uiteinden van de RS485-bus;
-- verbind nooit twee OpenTherm-masteraansluitingen met elkaar.
+- elke OpenTherm-kabel verbindt exact één master met één slave; verbind nooit
+  twee masters, twee slaves of beide simulatorpoorten met elkaar.
 
 ## 3. Webinterface openen
 
@@ -304,7 +310,29 @@ Bij normale OpenTherm-belasting moeten de volgende tellers nul blijven:
 `OpenTherm response queued count` en `OpenTherm TX completed count` horen op
 langere termijn gelijk op te lopen.
 
-## 14. Aanbevolen basistest
+## 14. OpenTherm-thermostaatsimulator
+
+De thermostaatsimulator is een OpenTherm-master op de `OTB`-aansluiting. Hij
+stuurt afwisselend `Status` en `TSet`; standaard eenmaal per seconde. Gebruik
+hem alleen op de `OTT`-aansluiting van de controller onder test.
+
+Gebruik in de webinterface:
+
+- `Thermostat CH demand` voor de CH-bit in `Status`;
+- `Thermostat DHW demand` voor de DHW-bit in `Status`;
+- `Thermostat TSet` voor de gewenste aanvoertemperatuur;
+- `Thermostat poll interval` voor de mastercyclus.
+
+`Controller CH active via thermostat`, `Controller DHW active via thermostat`,
+`Controller flame via thermostat` en `Controller fault via thermostat` tonen
+de statusbits die de controller op de betreffende vraag terugstuurt.
+
+Voor een geldige verbinding lopen `Thermostat OpenTherm requests` en
+`Thermostat OpenTherm responses` op. `Thermostat OpenTherm timeouts`,
+`invalid responses`, `RX queue overflow` en `TX errors` blijven nul. Start een
+nieuwe run met `Reset thermostat diagnostics`.
+
+## 15. Aanbevolen basistest
 
 1. Verbind OpenTherm en RS485 volgens hoofdstuk 2.
 2. Zet alle foutinjecties uit en herstel de factorytabellen.
@@ -321,7 +349,7 @@ langere termijn gelijk op te lopen.
 12. Herhaal de relevante stappen terwijl OpenTherm tegelijk actief wordt
     gepolld.
 
-## 15. Wat rapporteren bij een probleem
+## 16. Wat rapporteren bij een probleem
 
 Noteer of maak screenshots van:
 
@@ -338,7 +366,7 @@ Noteer of maak screenshots van:
 
 Reset de diagnostiek niet voordat deze informatie is vastgelegd.
 
-## 16. Beperkingen
+## 17. Beperkingen
 
 - De simulator bewijst geen werkelijk hydraulisch, thermisch of elektrisch
   ODU-gedrag.

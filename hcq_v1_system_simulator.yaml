@@ -2,13 +2,14 @@ substitutions:
   device_name: openquatt-simulator
   friendly_name: OpenQuatt Modbus and OpenTherm Simulator
   simulator_contract: openquatt-modbus-opentherm-v1
-  simulator_version: v0.1.0
+  simulator_version: v0.2.0
   odu_1_address: "1"
   odu_2_address: "2"
 
 packages:
   boiler: !include hcq_v1_boiler_simulator.yaml
   quatt_odu: !include packages/quatt_odu_simulator.yaml
+  thermostat: !include packages/ot_thermostat_simulator.yaml
 
 esphome:
   name: ${device_name}

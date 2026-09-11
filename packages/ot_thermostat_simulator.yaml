@@ -1,0 +1,131 @@
+substitutions:
+  ot_master_in_pin: GPIO17
+  ot_master_out_pin: GPIO21
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [hcq_ot_thermostat_simulator]
+
+hcq_ot_thermostat_simulator:
+  id: ot_thermostat_simulator
+  in_pin: ${ot_master_in_pin}
+  out_pin: ${ot_master_out_pin}
+  poll_interval_ms: 1000
+
+switch:
+  - platform: template
+    id: thermostat_ch_enable
+    name: "Thermostat CH demand"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: template
+    id: thermostat_dhw_enable
+    name: "Thermostat DHW demand"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+number:
+  - platform: template
+    id: thermostat_t_set
+    name: "Thermostat TSet"
+    unit_of_measurement: "°C"
+    optimistic: true
+    restore_value: true
+    initial_value: 20
+    min_value: 5
+    max_value: 90
+    step: 0.5
+
+  - platform: template
+    id: thermostat_poll_interval
+    name: "Thermostat poll interval"
+    unit_of_measurement: ms
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 1000
+    min_value: 250
+    max_value: 10000
+    step: 50
+
+binary_sensor:
+  - platform: template
+    name: "Controller CH active via thermostat"
+    lambda: return id(ot_thermostat_simulator)->controller_ch_active();
+  - platform: template
+    name: "Controller DHW active via thermostat"
+    lambda: return id(ot_thermostat_simulator)->controller_dhw_active();
+  - platform: template
+    name: "Controller fault via thermostat"
+    entity_category: diagnostic
+    lambda: return id(ot_thermostat_simulator)->controller_fault();
+  - platform: template
+    name: "Controller flame via thermostat"
+    entity_category: diagnostic
+    lambda: return id(ot_thermostat_simulator)->controller_flame();
+
+sensor:
+  - platform: template
+    name: "Thermostat OpenTherm requests"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    lambda: return id(ot_thermostat_simulator)->request_count();
+  - platform: template
+    name: "Thermostat OpenTherm responses"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    lambda: return id(ot_thermostat_simulator)->response_count();
+  - platform: template
+    name: "Thermostat OpenTherm timeouts"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    lambda: return id(ot_thermostat_simulator)->timeout_count();
+  - platform: template
+    name: "Thermostat OpenTherm invalid responses"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    lambda: return id(ot_thermostat_simulator)->invalid_response_count();
+  - platform: template
+    name: "Thermostat OpenTherm RX queue overflow"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    lambda: return id(ot_thermostat_simulator)->rx_queue_overflow_count();
+  - platform: template
+    name: "Thermostat OpenTherm TX errors"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    lambda: return id(ot_thermostat_simulator)->tx_error_count();
+
+text_sensor:
+  - platform: template
+    name: "Thermostat OpenTherm diagnostics"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      char text[160];
+      snprintf(text, sizeof(text), "req=%lu rsp=%lu timeout=%lu invalid=%lu age_ms=%lu last_id=%d",
+               static_cast<unsigned long>(id(ot_thermostat_simulator)->request_count()),
+               static_cast<unsigned long>(id(ot_thermostat_simulator)->response_count()),
+               static_cast<unsigned long>(id(ot_thermostat_simulator)->timeout_count()),
+               static_cast<unsigned long>(id(ot_thermostat_simulator)->invalid_response_count()),
+               static_cast<unsigned long>(id(ot_thermostat_simulator)->last_response_age_ms()),
+               id(ot_thermostat_simulator)->last_response_id());
+      return {text};
+
+button:
+  - platform: template
+    name: "Reset thermostat diagnostics"
+    entity_category: diagnostic
+    on_press:
+      - lambda: id(ot_thermostat_simulator)->reset_diagnostics();
+
+interval:
+  - interval: 250ms
+    then:
+      - lambda: |-
+          id(ot_thermostat_simulator)->set_ch_enable(id(thermostat_ch_enable).state);
+          id(ot_thermostat_simulator)->set_dhw_enable(id(thermostat_dhw_enable).state);
+          id(ot_thermostat_simulator)->set_t_set(id(thermostat_t_set).state);
+          id(ot_thermostat_simulator)->set_poll_interval_ms(lroundf(id(thermostat_poll_interval).state));

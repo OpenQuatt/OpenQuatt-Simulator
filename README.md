@@ -4,11 +4,12 @@ Standalone ESPHome firmware for an HCQ Q-edition revision 1.0 board. The board
 can simultaneously simulate:
 
 - one OpenTherm boiler/slave on `OTT`;
+- one OpenTherm thermostat/master on `OTB`;
 - two independent Quatt outdoor units on the `M2` RS485 port, normally at
   Modbus addresses 1 and 2.
 
 The combined firmware publishes compatibility contract
-`openquatt-modbus-opentherm-v1` and simulator version `v0.1.0`. HIL clients
+`openquatt-modbus-opentherm-v1` and simulator version `v0.2.0`. HIL clients
 must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
@@ -20,7 +21,7 @@ Two firmware entrypoints are retained:
 | Entrypoint | Function |
 |---|---|
 | `hcq_v1_boiler_simulator.yaml` | Existing OpenTherm boiler simulator only |
-| `hcq_v1_system_simulator.yaml` | OpenTherm boiler plus dual Quatt ODU simulator |
+| `hcq_v1_system_simulator.yaml` | OpenTherm boiler, thermostat and dual Quatt ODU simulator |
 
 For step-by-step operation and test scenarios, see the Dutch
 [tester handleiding](docs/tester-handleiding.md).
@@ -35,6 +36,8 @@ OpenQuatt Q-edition definitions before
 |---|---|---:|
 | OpenTherm slave input | `OTT` | `GPIO16` |
 | OpenTherm slave output | `OTT` | `GPIO15` |
+| OpenTherm master input | `OTB` | `GPIO17` |
+| OpenTherm master output | `OTB` | `GPIO21` |
 | Yellow status LED | front | `GPIO47` |
 | Red status LED | front | `GPIO48` |
 | Modbus TX | `M2` | `GPIO40` |
@@ -42,15 +45,17 @@ OpenQuatt Q-edition definitions before
 | Modbus DE/RE | `M2` | `GPIO38` |
 
 `OTT` is the OpenTherm thermostat/slave side and is used here to impersonate a
-boiler. `OTB` is the OpenTherm boiler/master side of a controller. `M1` and
-`M2` are RS485/Modbus connections, not OpenTherm connections. In this test
-setup, the controller-under-test uses its primary ODU RS485 connection and the
-simulator uses its onboard `M2` transceiver as server.
+boiler. `OTB` is the OpenTherm boiler/master side and is used here to
+impersonate a thermostat. The two HCQ interfaces are electrically separate.
+`M1` and `M2` are RS485/Modbus connections, not OpenTherm connections. In this
+test setup, the controller-under-test uses its primary ODU RS485 connection and
+the simulator uses its onboard `M2` transceiver as server.
 
 ```text
 Controller/project under test                 HCQ v1.0 simulator
 
 OTB / OpenTherm master ── two wires ───────── OTT / OpenTherm slave
+OTT / OpenTherm slave  ── two wires ───────── OTB / OpenTherm master
 
 Primary ODU RS485      ── A / B / GND ────── M2 / Modbus RTU server
                                                 ├─ address 1: ODU 1
@@ -58,9 +63,10 @@ Primary ODU RS485      ── A / B / GND ────── M2 / Modbus RTU ser
 ```
 
 Connect A to A, B to B and GND to GND. OpenTherm polarity does not matter.
-Use RS485 termination only at both bus ends. Never connect two OpenTherm
-masters, and never put a real ODU with the same Modbus address on this bus.
-The simulator drives no relay, pump or other physical actuator.
+Use RS485 termination only at both bus ends. Each OpenTherm connection must
+join exactly one master to one slave; never bridge the two simulator ports or
+connect two masters. Never put a real ODU with the same Modbus address on this
+bus. The simulator drives no relay, pump or other physical actuator.
 
 The M2 bus is fixed at 19200 baud, 8 data bits, even parity and 1 stop bit
 (`19200 8E1`). No external MAX485 is needed.
