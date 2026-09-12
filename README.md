@@ -9,7 +9,7 @@ can simultaneously simulate:
   Modbus addresses 1 and 2.
 
 The combined firmware publishes compatibility contract
-`openquatt-modbus-opentherm-v1` and simulator version `v0.3.0`. HIL clients
+`openquatt-modbus-opentherm-v2` and simulator version `v0.4.0`. HIL clients
 must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
@@ -151,6 +151,14 @@ revision recorded in `data/odu/performance.yaml`; no OpenQuatt header is linked
 at runtime. Performance is interpolated by actual frequency. Above 90 Hz the
 reported frequency remains correct, while power and COP are capped at the
 90 Hz point and `High-frequency performance synthetic` is set.
+
+The V2 snapshot uses the complete CiC 4.2.0 10 Hz × 17 ambient × 8 supply
+surface. Masked cells and inputs outside the V2 ambient/supply domain yield no
+synthetic performance output. For deterministic HIL fixtures, each ODU has an
+off-by-default `manual telemetry override`. It supplies only the documented
+raw readbacks for `2099`, `2100`, `2101`, `2105`, `2108`, `2133`, `2134`,
+`2137` and `2138`; it does not alter dynamic state or the independent defrost
+register `2118`.
 
 Defrost can be injected per ODU. The defrost register and status bit are set,
 water-out temporarily falls, and `Hold physical level during defrost` controls

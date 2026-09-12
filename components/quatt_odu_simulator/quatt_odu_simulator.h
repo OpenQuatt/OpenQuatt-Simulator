@@ -221,6 +221,36 @@ public:
   void set_pump_feedback_override(uint8_t index, uint16_t value) {
     this->model(index).mutable_state().pump_feedback_override = value;
   }
+  void set_manual_telemetry_enabled(uint8_t index, bool value) {
+    this->model(index).set_manual_telemetry_enabled(value);
+  }
+  void set_manual_working_mode(uint8_t index, uint16_t value) {
+    this->model(index).set_manual_working_mode_raw(std::min<uint16_t>(value, 2U));
+  }
+  void set_manual_ac_voltage(uint8_t index, float value) {
+    this->model(index).set_manual_ac_voltage_raw(encode_unsigned_(value));
+  }
+  void set_manual_ac_current(uint8_t index, float value) {
+    this->model(index).set_manual_ac_current_raw(encode_unsigned_(value * 10.0f));
+  }
+  void set_manual_fan_speed(uint8_t index, float value) {
+    this->model(index).set_manual_fan_speed_raw(encode_unsigned_(value));
+  }
+  void set_manual_operating_status(uint8_t index, uint16_t value) {
+    this->model(index).set_manual_operating_status_raw(value);
+  }
+  void set_manual_pump_feedback(uint8_t index, uint16_t value) {
+    this->model(index).set_manual_pump_feedback_raw(value);
+  }
+  void set_manual_water_in_temperature(uint8_t index, float value) {
+    this->model(index).set_manual_water_in_temperature_raw(encode_temperature_(value));
+  }
+  void set_manual_water_out_temperature(uint8_t index, float value) {
+    this->model(index).set_manual_water_out_temperature_raw(encode_temperature_(value));
+  }
+  void set_manual_water_flow(uint8_t index, float value) {
+    this->model(index).set_manual_water_flow_raw(encode_unsigned_(value / 0.618f));
+  }
   void set_hold_level_during_defrost(uint8_t index, bool value) {
     this->model(index).mutable_settings().hold_level_during_defrost = value;
   }
@@ -240,6 +270,11 @@ public:
   uint32_t loop_stack_high_watermark_bytes() const;
 
 protected:
+  static uint16_t encode_unsigned_(float value) {
+    return static_cast<uint16_t>(std::clamp<long>(lroundf(value), 0L, 65535L));
+  }
+  static uint16_t encode_temperature_(float value) { return encode_unsigned_(value * 100.0f + 3000.0f); }
+
   std::array<QuattOduSimulatorModel, 2> models_{};
   std::array<uint8_t, 2> addresses_{{1U, 2U}};
   std::array<bool, 2> odu_responses_enabled_{{true, true}};
