@@ -28,8 +28,10 @@ For step-by-step operation and test scenarios, see the Dutch
 
 For the fixed desktop HIL setup, use the versioned
 [lab guide](docs/hil-lab.md), [testcase catalogue](docs/hil-testcases.md) and
-[interface catalogue](docs/hil-interface.md). The local `$hcq-hil` Codex skill
-uses these documents for repeatable, evidence-based test runs.
+[interface catalogue](docs/hil-interface.md). The versioned
+[`$hcq-hil` skill](skills/hcq-hil/SKILL.md) provides the repeatable Codex
+workflow, including verified simulator and controller REST inputs plus safe M2
+UART fault injection.
 
 ## Hardware and wiring
 
