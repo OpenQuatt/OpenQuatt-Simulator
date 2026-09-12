@@ -10,6 +10,12 @@ external_components:
       path: components
     components: [quatt_odu_simulator]
 
+# The simulator is HIL test equipment. Persist profile and address recovery
+# promptly so a completed run cannot be undone by a power interruption inside
+# ESPHome's normal deferred-write window. Manual fixtures are current-boot only.
+preferences:
+  flash_write_interval: 1s
+
 uart:
   - id: odu_modbus_uart
     tx_pin: ${odu_modbus_tx_pin}
@@ -215,6 +221,22 @@ switch:
     entity_category: config
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: template
+    id: odu_1_manual_telemetry_override
+    name: "ODU 1 manual telemetry override"
+    icon: mdi:database-edit-outline
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_2_manual_telemetry_override
+    name: "ODU 2 manual telemetry override"
+    icon: mdi:database-edit-outline
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
 
   - platform: template
     id: odu_1_defrost
@@ -449,6 +471,226 @@ number:
     min_value: 0
     max_value: 60
     step: 0.1
+
+  - platform: template
+    id: odu_1_manual_working_mode
+    name: "ODU 1 manual working mode 2099"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 2
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_2_manual_working_mode
+    name: "ODU 2 manual working mode 2099"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 2
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_1_manual_ac_voltage
+    name: "ODU 1 manual AC voltage"
+    unit_of_measurement: V
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 230
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_2_manual_ac_voltage
+    name: "ODU 2 manual AC voltage"
+    unit_of_measurement: V
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 230
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_1_manual_ac_current
+    name: "ODU 1 manual AC current"
+    unit_of_measurement: A
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 6553.5
+    step: 0.1
+
+  - platform: template
+    id: odu_2_manual_ac_current
+    name: "ODU 2 manual AC current"
+    unit_of_measurement: A
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 6553.5
+    step: 0.1
+
+  - platform: template
+    id: odu_1_manual_fan_speed
+    name: "ODU 1 manual fan speed"
+    unit_of_measurement: RPM
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_2_manual_fan_speed
+    name: "ODU 2 manual fan speed"
+    unit_of_measurement: RPM
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+
+  - platform: template
+    id: odu_1_manual_operating_status
+    name: "ODU 1 manual operating status 2108"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_2_manual_operating_status
+    name: "ODU 2 manual operating status 2108"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_1_manual_pump_feedback
+    name: "ODU 1 manual pump feedback 2137"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_2_manual_pump_feedback
+    name: "ODU 2 manual pump feedback 2137"
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 65535
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_1_manual_water_in_temperature
+    name: "ODU 1 manual water-in temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 30
+    min_value: -30
+    max_value: 625.35
+    step: 0.01
+
+  - platform: template
+    id: odu_2_manual_water_in_temperature
+    name: "ODU 2 manual water-in temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 30
+    min_value: -30
+    max_value: 625.35
+    step: 0.01
+
+  - platform: template
+    id: odu_1_manual_water_out_temperature
+    name: "ODU 1 manual water-out temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 30
+    min_value: -30
+    max_value: 625.35
+    step: 0.01
+
+  - platform: template
+    id: odu_2_manual_water_out_temperature
+    name: "ODU 2 manual water-out temperature"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 30
+    min_value: -30
+    max_value: 625.35
+    step: 0.01
+
+  - platform: template
+    id: odu_1_manual_flow
+    name: "ODU 1 manual flow"
+    unit_of_measurement: L/h
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 40491.3
+    step: 0.618
+
+  - platform: template
+    id: odu_2_manual_flow
+    name: "ODU 2 manual flow"
+    unit_of_measurement: L/h
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 40491.3
+    step: 0.618
 
   - platform: template
     id: odu_1_fault_word_1
@@ -826,6 +1068,26 @@ interval:
           simulator.set_outside_temperature(1, id(odu_2_outside_temperature).state);
           simulator.set_water_in_temperature(0, id(odu_1_water_in_temperature).state);
           simulator.set_water_in_temperature(1, id(odu_2_water_in_temperature).state);
+          simulator.set_manual_telemetry_enabled(0, id(odu_1_manual_telemetry_override).state);
+          simulator.set_manual_telemetry_enabled(1, id(odu_2_manual_telemetry_override).state);
+          simulator.set_manual_working_mode(0, lroundf(id(odu_1_manual_working_mode).state));
+          simulator.set_manual_working_mode(1, lroundf(id(odu_2_manual_working_mode).state));
+          simulator.set_manual_ac_voltage(0, id(odu_1_manual_ac_voltage).state);
+          simulator.set_manual_ac_voltage(1, id(odu_2_manual_ac_voltage).state);
+          simulator.set_manual_ac_current(0, id(odu_1_manual_ac_current).state);
+          simulator.set_manual_ac_current(1, id(odu_2_manual_ac_current).state);
+          simulator.set_manual_fan_speed(0, id(odu_1_manual_fan_speed).state);
+          simulator.set_manual_fan_speed(1, id(odu_2_manual_fan_speed).state);
+          simulator.set_manual_operating_status(0, lroundf(id(odu_1_manual_operating_status).state));
+          simulator.set_manual_operating_status(1, lroundf(id(odu_2_manual_operating_status).state));
+          simulator.set_manual_pump_feedback(0, lroundf(id(odu_1_manual_pump_feedback).state));
+          simulator.set_manual_pump_feedback(1, lroundf(id(odu_2_manual_pump_feedback).state));
+          simulator.set_manual_water_in_temperature(0, id(odu_1_manual_water_in_temperature).state);
+          simulator.set_manual_water_in_temperature(1, id(odu_2_manual_water_in_temperature).state);
+          simulator.set_manual_water_out_temperature(0, id(odu_1_manual_water_out_temperature).state);
+          simulator.set_manual_water_out_temperature(1, id(odu_2_manual_water_out_temperature).state);
+          simulator.set_manual_water_flow(0, id(odu_1_manual_flow).state);
+          simulator.set_manual_water_flow(1, id(odu_2_manual_flow).state);
           simulator.set_table_write_enabled(0, id(odu_1_table_write_enabled).state);
           simulator.set_table_write_enabled(1, id(odu_2_table_write_enabled).state);
           simulator.set_defrost(0, id(odu_1_defrost).state);

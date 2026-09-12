@@ -1,7 +1,7 @@
 # Testerhandleiding HCQ Boiler- en Quatt ODU-simulator
 
-Deze handleiding hoort bij OpenQuatt Simulator `v0.3.0`, contract
-`openquatt-modbus-opentherm-v1`. Controleer beide entities vóór een HIL-run;
+Deze handleiding hoort bij OpenQuatt Simulator `v0.4.0`, contract
+`openquatt-modbus-opentherm-v2`. Controleer beide entities vóór een HIL-run;
 een afwijkend contract betekent dat de runner en simulator niet aantoonbaar
 compatibel zijn.
 
@@ -88,6 +88,7 @@ Controleer vóór een normale test:
 | `ODU fast simulation mode` | Off |
 | `ODU external system pump flow` | Off |
 | `ODU experimental performance extrapolation` | Off |
+| `ODU 1/2 manual telemetry override` | Off |
 | `ODU 1/2 force no flow` | Off |
 | `ODU 1/2 freeze measured frequency` | Off |
 | `ODU 1/2 defrost` | Off |
@@ -223,9 +224,23 @@ V1, V1.5 en V2 old begrenzen een aanvraag boven F10 tot F10 en verhogen de
 `cap`-teller. V2 new accepteert maximaal F20; heating F20 rapporteert 110 Hz.
 
 Het thermische vermogen en de COP zijn gesimuleerd op basis van een lokale
-numerieke OpenQuatt-snapshot. Boven 90 Hz blijft de frequentietelemetrie
-correct, maar vermogen en COP worden standaard op het 90Hz-punt begrensd. De
-diagnose `high-frequency performance synthetic` wordt dan actief.
+numerieke OpenQuatt-snapshot. V2 gebruikt de volledige CiC 4.2.0-surface;
+gemaskeerde punten en waarden buiten het V2-temperatuurdomein leveren geen
+synthetisch vermogen. Boven 90 Hz blijft de frequentietelemetrie correct,
+maar vermogen en COP worden standaard op het 90Hz-punt begrensd. De diagnose
+`high-frequency performance synthetic` wordt dan actief.
+
+## 8. Handmatige telemetriefixture
+
+Schakel `ODU 1/2 manual telemetry override` alleen in voor een afgebakende
+HIL-fixture. Dan zijn de readbacks voor `2099`, `2100`, `2101`, `2105`,
+`2108`, `2133`, `2134`, `2137` en `2138` exact de bijbehorende `manual`-
+entiteiten. De dynamische simulator blijft intern doorlopen; de override
+vervangt uitsluitend deze Modbus-reads. Schakel de override na afloop uit.
+
+`manual operating status 2108` is een raw 16-bits woord. De
+bodemplaatverwarming is bit `0x0004`; defrost staat afzonderlijk in register
+`2118` en blijft onafhankelijk van de handmatige statusreadback.
 
 ## 9. Frequentietabellen
 

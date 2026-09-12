@@ -8,7 +8,7 @@ en mogen alleen via de beschreven bussen met elkaar verbonden zijn.
 
 | Rol | URL | Verwachte firmware |
 |---|---|---|
-| HCQ simulator | `http://192.168.2.63/` | OpenQuatt Simulator, contract `openquatt-modbus-opentherm-v1` |
+| HCQ simulator | `http://192.168.2.63/` | OpenQuatt Simulator, contract `openquatt-modbus-opentherm-v2` |
 | Testcontroller | `http://openquatt-test.local/` (DHCP fallback: `http://192.168.2.86/`) | OpenQuatt testcontroller |
 
 De simulator-IP is een DHCP-adres. De testcontroller moet firmware draaien uit

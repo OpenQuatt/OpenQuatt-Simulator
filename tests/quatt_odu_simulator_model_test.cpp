@@ -63,6 +63,32 @@ int main() {
   model.set_defrost(false);
   assert(model.state().accepted_physical_level == 0U);
 
+  model.configure(Profile::V2_NEW);
+  model.set_manual_working_mode_raw(2U);
+  model.set_manual_ac_voltage_raw(230U);
+  model.set_manual_ac_current_raw(13U);
+  model.set_manual_fan_speed_raw(200U);
+  model.set_manual_operating_status_raw(0x0004U);
+  model.set_manual_pump_feedback_raw(300U);
+  model.set_manual_water_in_temperature_raw(5250U);
+  model.set_manual_water_out_temperature_raw(5300U);
+  model.set_manual_water_flow_raw(1650U);
+  model.set_manual_telemetry_enabled(true);
+  model.set_defrost(true);
+  for (int i = 0; i < 8; i++) model.update(0.25f);
+  assert(read(model, 2099U) == 2U);
+  assert(read(model, 2100U) == 230U);
+  assert(read(model, 2101U) == 13U);
+  assert(read(model, 2105U) == 200U);
+  assert(read(model, 2108U) == 0x0004U);
+  assert(read(model, 2118U) == 1U);
+  assert(read(model, 2133U) == 5250U);
+  assert(read(model, 2134U) == 5300U);
+  assert(read(model, 2137U) == 300U);
+  assert(read(model, 2138U) == 1650U);
+  model.set_manual_telemetry_enabled(false);
+  assert((read(model, 2108U) & 0x0010U) != 0U);
+
   assert(model.write_register(3001U, 25U, 30U));
   assert(read(model, 3001U) == 25U);
   assert(model.state().table_dirty);
