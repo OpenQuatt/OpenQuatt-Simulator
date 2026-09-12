@@ -101,5 +101,5 @@ Modbus addresses below are zero-based. A spreadsheet address is therefore Modbus
 
 ## Performance snapshot
 
-The numerical subset comes from OpenQuatt revision `89602d4f55a5241546160114cb7351b10e89f139`.
+The numerical subset comes from OpenQuatt revision `e4676804bef1ceb99f29cad614f61cc585c29c10`.
 Interpolation and dynamics are simulator-owned. Values above 90 Hz are clamped by default and marked synthetic.

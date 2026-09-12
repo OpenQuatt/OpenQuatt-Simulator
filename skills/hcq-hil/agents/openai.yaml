@@ -1,0 +1,4 @@
+interface:
+  display_name: "HCQ HIL"
+  short_description: "Test OpenQuatt changes on the HCQ HIL lab"
+  default_prompt: "Test my changes on the HCQ desktop setup."

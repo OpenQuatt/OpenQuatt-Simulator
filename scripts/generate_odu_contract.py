@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 import sys
 
@@ -41,10 +42,22 @@ def cpp_string(value: object) -> str:
 def fmt_number(value: float | int) -> str:
     if isinstance(value, int):
         return str(value)
-    return f"{value:.6g}f"
+    rendered = f"{float(value):.9g}"
+    if "." not in rendered and "e" not in rendered.lower():
+        rendered += ".0"
+    return rendered + "f"
 
 
-def fmt_float(value: float | int) -> str:
+def fmt_double(value: float | int) -> str:
+    rendered = f"{float(value):.17g}"
+    if "." not in rendered and "e" not in rendered.lower():
+        rendered += ".0"
+    return rendered
+
+
+def fmt_float(value: float | int | None) -> str:
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return "std::numeric_limits<float>::quiet_NaN()"
     rendered = f"{float(value):.8g}"
     if "." not in rendered and "e" not in rendered.lower():
         rendered += ".0"
@@ -99,13 +112,20 @@ def validate(registers: dict, profiles: dict, performance: dict) -> None:
             raise ValueError(f"runtime preset {preset['id']} frequency table length does not match capability")
 
     for model_name, model in performance["models"].items():
-        if len(model["frequency_hz"]) != 10:
-            raise ValueError(f"{model_name} must have ten performance anchors")
+        frequency_count = len(model["frequency_hz"])
+        ambient_count = len(model["ambient_c"])
+        supply_count = len(model["supply_c"])
+        if frequency_count < 2 or ambient_count < 2 or supply_count < 2:
+            raise ValueError(f"{model_name} performance axes require at least two anchors")
+        for axis in ("frequency_hz", "ambient_c", "supply_c"):
+            values = model[axis]
+            if any(left >= right for left, right in zip(values, values[1:])):
+                raise ValueError(f"{model_name} {axis} must be strictly ascending")
         for field in ("thermal_power_w", "cop"):
-            if len(model[field]) != 2 or any(len(row) != 2 for row in model[field]):
-                raise ValueError(f"{model_name} {field} must be 2x2x10")
-            if any(len(values) != 10 for row in model[field] for values in row):
-                raise ValueError(f"{model_name} {field} must be 2x2x10")
+            if len(model[field]) != supply_count or any(len(row) != ambient_count for row in model[field]):
+                raise ValueError(f"{model_name} {field} must be supply x ambient x frequency")
+            if any(len(values) != frequency_count for row in model[field] for values in row):
+                raise ValueError(f"{model_name} {field} frequency row length mismatch")
 
 
 def generate_profiles(profiles: dict) -> str:
@@ -310,19 +330,32 @@ def generate_performance(performance: dict) -> str:
     blocks = []
     for model_name in ("v1", "v2"):
         model = performance["models"][model_name]
+        frequency_count = len(model["frequency_hz"])
+        ambient_count = len(model["ambient_c"])
+        supply_count = len(model["supply_c"])
         values = []
         for field in ("thermal_power_w", "cop"):
-            flattened = [value for amb in model[field] for supply in amb for value in supply]
+            flattened = [value for supply in model[field] for ambient in supply for value in ambient]
             values.append(
-                "inline constexpr std::array<float, 40> %s_%s = {%s};"
-                % (model_name.upper(), field.upper(), ", ".join(fmt_float(value) for value in flattened))
+                "inline constexpr std::array<float, %d> %s_%s = {%s};"
+                % (len(flattened), model_name.upper(), field.upper(), ", ".join(fmt_float(value) for value in flattened))
             )
         prefix = model_name.upper()
+        values.extend(
+            [
+                "inline constexpr std::array<double, %d> %s_FREQUENCY_HZ = {%s};"
+                % (frequency_count, prefix, ", ".join(fmt_double(value) for value in model["frequency_hz"])),
+                "inline constexpr std::array<double, %d> %s_AMBIENT_C = {%s};"
+                % (ambient_count, prefix, ", ".join(fmt_double(value) for value in model["ambient_c"])),
+                "inline constexpr std::array<double, %d> %s_SUPPLY_C = {%s};"
+                % (supply_count, prefix, ", ".join(fmt_double(value) for value in model["supply_c"])),
+            ]
+        )
         grid = (
             f"inline constexpr PerformanceGrid {prefix}_GRID = "
-            f"{{{{{', '.join(fmt_number(value) for value in model['frequency_hz'])}}}, "
-            f"{{{', '.join(fmt_number(value) for value in model['ambient_c'])}}}, "
-            f"{{{', '.join(fmt_number(value) for value in model['supply_c'])}}}, "
+            f"{{{prefix}_FREQUENCY_HZ.data(), {prefix}_FREQUENCY_HZ.size(), "
+            f"{prefix}_AMBIENT_C.data(), {prefix}_AMBIENT_C.size(), "
+            f"{prefix}_SUPPLY_C.data(), {prefix}_SUPPLY_C.size(), "
             f"{prefix}_THERMAL_POWER_W.data(), {prefix}_COP.data()}};"
         )
         blocks.append("\n".join(values + [grid]))
@@ -330,13 +363,18 @@ def generate_performance(performance: dict) -> str:
 #pragma once
 
 #include <array>
+#include <cstddef>
+#include <limits>
 
 namespace esphome::quatt_odu_simulator {{
 
 struct PerformanceGrid {{
-  std::array<float, 10> frequency_hz;
-  std::array<float, 2> ambient_c;
-  std::array<float, 2> supply_c;
+  const double *frequency_hz;
+  size_t frequency_count;
+  const double *ambient_c;
+  size_t ambient_count;
+  const double *supply_c;
+  size_t supply_count;
   const float *thermal_power_w;
   const float *cop;
 }};

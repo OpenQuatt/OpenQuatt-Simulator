@@ -1,7 +1,7 @@
 # Testerhandleiding HCQ Boiler- en Quatt ODU-simulator
 
-Deze handleiding hoort bij OpenQuatt Simulator `v0.1.0`, contract
-`openquatt-modbus-opentherm-v1`. Controleer beide entities vóór een HIL-run;
+Deze handleiding hoort bij OpenQuatt Simulator `v0.4.0`, contract
+`openquatt-modbus-opentherm-v2`. Controleer beide entities vóór een HIL-run;
 een afwijkend contract betekent dat de runner en simulator niet aantoonbaar
 compatibel zijn.
 
@@ -10,6 +10,7 @@ compatibel zijn.
 Deze HCQ Q-edition revision 1.0 simuleert gelijktijdig:
 
 - één OpenTherm-cv-ketel op de `OTT`-aansluiting;
+- één OpenTherm-thermostaat op de `OTB`-aansluiting;
 - maximaal twee onafhankelijke Quatt-ODU's op de `M2`-RS485-aansluiting.
 
 De simulator produceert geen warmte en stuurt geen fysieke pomp, compressor of
@@ -22,6 +23,10 @@ protocol- en regressietests van een OpenQuatt-controller.
 
 Verbind de `OTB`-aansluiting van de controller onder test met `OTT` op de
 simulator. OpenTherm is tweedraads en niet polariteitsgevoelig.
+
+Voor een thermostaatsimulatie is de richting precies andersom: verbind `OTT`
+van de controller met `OTB` op de simulator. De twee OpenTherm-aansluitingen
+van de HCQ v1.0 zijn elektrisch gescheiden en kunnen tegelijk worden gebruikt.
 
 ### Quatt ODU / RS485
 
@@ -41,7 +46,8 @@ Let op:
 
 - sluit geen echte ODU met hetzelfde Modbusadres op deze bus aan;
 - gebruik terminatie alleen aan de twee uiteinden van de RS485-bus;
-- verbind nooit twee OpenTherm-masteraansluitingen met elkaar.
+- elke OpenTherm-kabel verbindt exact één master met één slave; verbind nooit
+  twee masters, twee slaves of beide simulatorpoorten met elkaar.
 
 ## 3. Webinterface openen
 
@@ -82,6 +88,7 @@ Controleer vóór een normale test:
 | `ODU fast simulation mode` | Off |
 | `ODU external system pump flow` | Off |
 | `ODU experimental performance extrapolation` | Off |
+| `ODU 1/2 manual telemetry override` | Off |
 | `ODU 1/2 force no flow` | Off |
 | `ODU 1/2 freeze measured frequency` | Off |
 | `ODU 1/2 defrost` | Off |
@@ -217,9 +224,23 @@ V1, V1.5 en V2 old begrenzen een aanvraag boven F10 tot F10 en verhogen de
 `cap`-teller. V2 new accepteert maximaal F20; heating F20 rapporteert 110 Hz.
 
 Het thermische vermogen en de COP zijn gesimuleerd op basis van een lokale
-numerieke OpenQuatt-snapshot. Boven 90 Hz blijft de frequentietelemetrie
-correct, maar vermogen en COP worden standaard op het 90Hz-punt begrensd. De
-diagnose `high-frequency performance synthetic` wordt dan actief.
+numerieke OpenQuatt-snapshot. V2 gebruikt de volledige CiC 4.2.0-surface;
+gemaskeerde punten en waarden buiten het V2-temperatuurdomein leveren geen
+synthetisch vermogen. Boven 90 Hz blijft de frequentietelemetrie correct,
+maar vermogen en COP worden standaard op het 90Hz-punt begrensd. De diagnose
+`high-frequency performance synthetic` wordt dan actief.
+
+## 8. Handmatige telemetriefixture
+
+Schakel `ODU 1/2 manual telemetry override` alleen in voor een afgebakende
+HIL-fixture. Dan zijn de readbacks voor `2099`, `2100`, `2101`, `2105`,
+`2108`, `2133`, `2134`, `2137` en `2138` exact de bijbehorende `manual`-
+entiteiten. De dynamische simulator blijft intern doorlopen; de override
+vervangt uitsluitend deze Modbus-reads. Schakel de override na afloop uit.
+
+`manual operating status 2108` is een raw 16-bits woord. De
+bodemplaatverwarming is bit `0x0004`; defrost staat afzonderlijk in register
+`2118` en blijft onafhankelijk van de handmatige statusreadback.
 
 ## 9. Frequentietabellen
 
@@ -304,7 +325,31 @@ Bij normale OpenTherm-belasting moeten de volgende tellers nul blijven:
 `OpenTherm response queued count` en `OpenTherm TX completed count` horen op
 langere termijn gelijk op te lopen.
 
-## 14. Aanbevolen basistest
+## 14. OpenTherm-thermostaatsimulator
+
+De thermostaatsimulator is een OpenTherm-master op de `OTB`-aansluiting. Hij
+stuurt `Status`, `TSet`, `TrSet` en `Tr`; standaard één bericht per seconde.
+Gebruik hem alleen op de `OTT`-aansluiting van de controller onder test.
+
+Gebruik in de webinterface:
+
+- `Thermostat CH demand` voor de CH-bit in `Status`;
+- `Thermostat DHW demand` voor de DHW-bit in `Status`;
+- `Thermostat TSet` voor de gewenste aanvoertemperatuur;
+- `Thermostat room setpoint` voor `TrSet` (ID 16);
+- `Thermostat room temperature` voor `Tr` (ID 24);
+- `Thermostat poll interval` voor de mastercyclus.
+
+`Controller CH active via thermostat`, `Controller DHW active via thermostat`,
+`Controller flame via thermostat` en `Controller fault via thermostat` tonen
+de statusbits die de controller op de betreffende vraag terugstuurt.
+
+Voor een geldige verbinding lopen `Thermostat OpenTherm requests` en
+`Thermostat OpenTherm responses` op. `Thermostat OpenTherm timeouts`,
+`invalid responses`, `RX queue overflow` en `TX errors` blijven nul. Start een
+nieuwe run met `Reset thermostat diagnostics`.
+
+## 15. Aanbevolen basistest
 
 1. Verbind OpenTherm en RS485 volgens hoofdstuk 2.
 2. Zet alle foutinjecties uit en herstel de factorytabellen.
@@ -321,7 +366,7 @@ langere termijn gelijk op te lopen.
 12. Herhaal de relevante stappen terwijl OpenTherm tegelijk actief wordt
     gepolld.
 
-## 15. Wat rapporteren bij een probleem
+## 16. Wat rapporteren bij een probleem
 
 Noteer of maak screenshots van:
 
@@ -338,7 +383,38 @@ Noteer of maak screenshots van:
 
 Reset de diagnostiek niet voordat deze informatie is vastgelegd.
 
-## 16. Beperkingen
+## 17. M2 UART-foutinspuiting
+
+Gebruik dit alleen voor een controllerwijziging die UART parity- of
+framingfouten op de M2-RS485-bus moet afhandelen. De functie is standaard uit
+na elke reboot.
+
+1. Zet beide ODU-profielen op de normale testprofielen en bevestig dat de
+   controller beide ODU's leest.
+2. Reset `ODU diagnostics` en noteer de beginwaarden van de vier `M2 UART`
+   diagnosetellers.
+3. Schakel `M2 UART fault injection enabled` in.
+4. Druk precies één keer op `Inject M2 UART parity error` of `Inject M2 UART
+   framing error`.
+5. Wacht tot de bijbehorende `faults injected`-teller één hoger staat en
+   `M2 UART fault injection active` weer uit is. `M2 UART fault restore
+   errors` moet nul blijven.
+6. Controleer dat de normale M2-requests daarna weer oplopen en de controller
+   verbinding houdt of volgens de geteste herstelstrategie herstelt.
+7. Schakel `M2 UART fault injection enabled` weer uit.
+
+De parity-actie verstuurt één byte met oneven parity op de verder `19200 8E1`
+bus. De framing-actie verstuurt één byte gevolgd door een UART BREAK. De
+simulator wacht op een idle bus, neemt de RS485-zender tijdelijk exclusief over
+en herstelt daarna even parity en receive-mode. Deze test bewijst pas de
+controllerfiltering wanneer de controller zelf een UART-foutmelding of
+diagnostiek vastlegt; de simulatorteller bewijst alleen dat de fout is
+uitgezonden.
+
+De functie is alleen beschikbaar op M2. Voor M1 is een tweede fysiek
+aangesloten RS485-lijn nodig.
+
+## 18. Beperkingen
 
 - De simulator bewijst geen werkelijk hydraulisch, thermisch of elektrisch
   ODU-gedrag.

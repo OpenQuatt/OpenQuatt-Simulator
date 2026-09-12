@@ -61,6 +61,19 @@ struct ModelSettings {
   bool experimental_high_frequency_extrapolation{false};
 };
 
+struct ManualTelemetry {
+  bool enabled{false};
+  uint16_t working_mode_raw{0U};
+  uint16_t ac_voltage_raw{0U};
+  uint16_t ac_current_raw{0U};
+  uint16_t fan_speed_raw{0U};
+  uint16_t operating_status_raw{0U};
+  uint16_t pump_feedback_raw{0U};
+  uint16_t water_in_temperature_raw{3000U};
+  uint16_t water_out_temperature_raw{3000U};
+  uint16_t water_flow_raw{0U};
+};
+
 struct OduState {
   Profile profile{Profile::DISABLED};
   WorkingMode requested_mode{WorkingMode::STANDBY};
@@ -102,6 +115,7 @@ struct OduState {
   bool force_flow_switch_on{false};
   bool defrost{false};
   bool high_frequency_performance_synthetic{false};
+  ManualTelemetry manual_telemetry{};
   std::array<uint16_t, 3> fault_words{};
   std::array<uint8_t, 21> cooling_table{};
   std::array<uint8_t, 21> heating_table{};
@@ -123,6 +137,7 @@ struct PerformancePoint {
   float thermal_power_w{0.0f};
   float cop{0.0f};
   bool high_frequency_synthetic{false};
+  bool valid{false};
 };
 
 class QuattOduSimulatorModel {
@@ -249,13 +264,16 @@ class QuattOduSimulatorModel {
         value = this->state_.pump_ipwm;
         return true;
       case 2099:
-        value = static_cast<uint16_t>(this->state_.active_mode);
+        value = this->manual_or_(this->state_.manual_telemetry.working_mode_raw,
+                                 static_cast<uint16_t>(this->state_.active_mode));
         return true;
       case 2100:
-        value = encode_unsigned_(this->state_.ac_voltage_v);
+        value = this->manual_or_(this->state_.manual_telemetry.ac_voltage_raw,
+                                 encode_unsigned_(this->state_.ac_voltage_v));
         return true;
       case 2101:
-        value = encode_unsigned_(this->state_.ac_current_a * 10.0f);
+        value = this->manual_or_(this->state_.manual_telemetry.ac_current_raw,
+                                 encode_unsigned_(this->state_.ac_current_a * 10.0f));
         return true;
       case 2102:
         value = encode_unsigned_(this->state_.target_frequency_hz);
@@ -267,7 +285,8 @@ class QuattOduSimulatorModel {
         value = encode_unsigned_(this->state_.fan_speed_max_rpm);
         return true;
       case 2105:
-        value = encode_unsigned_(this->state_.fan_speed_rpm);
+        value = this->manual_or_(this->state_.manual_telemetry.fan_speed_raw,
+                                 encode_unsigned_(this->state_.fan_speed_rpm));
         return true;
       case 2106:
         value = 0U;
@@ -276,7 +295,7 @@ class QuattOduSimulatorModel {
         value = encode_unsigned_(this->state_.eev_steps);
         return true;
       case 2108:
-        value = this->status_2108_();
+        value = this->manual_or_(this->state_.manual_telemetry.operating_status_raw, this->status_2108_());
         return true;
       case 2109:
         value = 0U;
@@ -348,19 +367,22 @@ class QuattOduSimulatorModel {
         value = encode_temperature_(this->state_.evaporating_temperature_c);
         return true;
       case 2133:
-        value = encode_temperature_(this->state_.water_in_temperature_c);
+        value = this->manual_or_(this->state_.manual_telemetry.water_in_temperature_raw,
+                                 encode_temperature_(this->state_.water_in_temperature_c));
         return true;
       case 2134:
-        value = encode_temperature_(this->state_.water_out_temperature_c);
+        value = this->manual_or_(this->state_.manual_telemetry.water_out_temperature_raw,
+                                 encode_temperature_(this->state_.water_out_temperature_c));
         return true;
       case 2135:
         value = encode_temperature_(this->state_.inner_coil_temperature_c);
         return true;
       case 2137:
-        value = this->pump_feedback_raw_();
+        value = this->manual_or_(this->state_.manual_telemetry.pump_feedback_raw, this->pump_feedback_raw_());
         return true;
       case 2138:
-        value = encode_unsigned_(this->state_.flow_lph / 0.618f);
+        value = this->manual_or_(this->state_.manual_telemetry.water_flow_raw,
+                                 encode_unsigned_(this->state_.flow_lph / 0.618f));
         return true;
       case 3999:
         value = static_cast<uint16_t>(this->state_.requested_mode);
@@ -499,6 +521,21 @@ class QuattOduSimulatorModel {
     this->state_.defrost = defrost;
   }
 
+  void set_manual_telemetry_enabled(bool enabled) { this->state_.manual_telemetry.enabled = enabled; }
+  void set_manual_working_mode_raw(uint16_t value) { this->state_.manual_telemetry.working_mode_raw = value; }
+  void set_manual_ac_voltage_raw(uint16_t value) { this->state_.manual_telemetry.ac_voltage_raw = value; }
+  void set_manual_ac_current_raw(uint16_t value) { this->state_.manual_telemetry.ac_current_raw = value; }
+  void set_manual_fan_speed_raw(uint16_t value) { this->state_.manual_telemetry.fan_speed_raw = value; }
+  void set_manual_operating_status_raw(uint16_t value) { this->state_.manual_telemetry.operating_status_raw = value; }
+  void set_manual_pump_feedback_raw(uint16_t value) { this->state_.manual_telemetry.pump_feedback_raw = value; }
+  void set_manual_water_in_temperature_raw(uint16_t value) {
+    this->state_.manual_telemetry.water_in_temperature_raw = value;
+  }
+  void set_manual_water_out_temperature_raw(uint16_t value) {
+    this->state_.manual_telemetry.water_out_temperature_raw = value;
+  }
+  void set_manual_water_flow_raw(uint16_t value) { this->state_.manual_telemetry.water_flow_raw = value; }
+
   void update(float dt_s) {
     if (!this->enabled() || dt_s <= 0.0f) return;
     dt_s = std::min(dt_s, 2.0f);
@@ -507,18 +544,29 @@ class QuattOduSimulatorModel {
     this->update_thermodynamics_(dt_s);
   }
 
-  PerformancePoint performance_at(float frequency_hz, float ambient_c, float supply_c) const {
-    if (frequency_hz <= 0.0f) return {};
+  PerformancePoint performance_at(double frequency_hz, double ambient_c, double supply_c) const {
+    if (!std::isfinite(frequency_hz) || !std::isfinite(ambient_c) || !std::isfinite(supply_c)) return {};
+    if (frequency_hz <= 0.0) return {};
     const bool v2 = this->state_.profile == Profile::V2_OLD || this->state_.profile == Profile::V2_NEW;
     const auto& grid = v2 ? V2_GRID : V1_GRID;
-    const bool high = frequency_hz > grid.frequency_hz.back();
-    const float used_frequency =
-        high && !this->settings_.experimental_high_frequency_extrapolation ? grid.frequency_hz.back() : frequency_hz;
+    const bool high = frequency_hz > grid.frequency_hz[grid.frequency_count - 1U];
+    if (v2 && (frequency_hz < grid.frequency_hz[0] || ambient_c < grid.ambient_c[0] ||
+               ambient_c > grid.ambient_c[grid.ambient_count - 1U] || supply_c < grid.supply_c[0] ||
+               supply_c > grid.supply_c[grid.supply_count - 1U]))
+      return {0.0f, 0.0f, high, false};
+    const double used_frequency =
+        high && !this->settings_.experimental_high_frequency_extrapolation
+            ? grid.frequency_hz[grid.frequency_count - 1U]
+            : frequency_hz;
     const bool extrapolate_frequency = high && this->settings_.experimental_high_frequency_extrapolation;
-    const float power =
-        interpolate_grid_(grid, grid.thermal_power_w, used_frequency, ambient_c, supply_c, extrapolate_frequency);
-    const float cop = interpolate_grid_(grid, grid.cop, used_frequency, ambient_c, supply_c, extrapolate_frequency);
-    return {std::max(0.0f, power), std::max(0.1f, cop), high};
+    float power = 0.0f;
+    float cop = 0.0f;
+    if (!interpolate_grid_(grid, grid.thermal_power_w, used_frequency, ambient_c, supply_c,
+                           extrapolate_frequency, power) ||
+        !interpolate_grid_(grid, grid.cop, used_frequency, ambient_c, supply_c,
+                           extrapolate_frequency, cop))
+      return {0.0f, 0.0f, high, false};
+    return {std::max(0.0f, power), std::max(0.1f, cop), high, true};
   }
 
  private:
@@ -527,34 +575,48 @@ class QuattOduSimulatorModel {
   }
   static uint16_t encode_temperature_(float value) { return encode_unsigned_(value * 100.0f + 3000.0f); }
 
-  static float interpolate_grid_(const PerformanceGrid& grid, const float* values, float frequency, float ambient,
-                                 float supply, bool extrapolate_frequency) {
-    const auto interval = [](const float* points, size_t count, float value) {
-      if (value <= points[0]) return size_t{0};
-      if (value >= points[count - 1U]) return count - 2U;
-      for (size_t index = 0; index + 1U < count; index++)
-        if (value <= points[index + 1U]) return index;
-      return count - 2U;
-    };
-    const auto fraction = [](float value, float low, float high, bool clamp) {
-      const float result = high == low ? 0.0f : (value - low) / (high - low);
-      return clamp ? std::clamp(result, 0.0f, 1.0f) : result;
-    };
-    const size_t fi = interval(grid.frequency_hz.data(), grid.frequency_hz.size(), frequency);
-    const size_t ai = interval(grid.ambient_c.data(), grid.ambient_c.size(), ambient);
-    const size_t si = interval(grid.supply_c.data(), grid.supply_c.size(), supply);
-    const float ft = fraction(frequency, grid.frequency_hz[fi], grid.frequency_hz[fi + 1U], !extrapolate_frequency);
-    const float at = fraction(ambient, grid.ambient_c[ai], grid.ambient_c[ai + 1U], true);
-    const float st = fraction(supply, grid.supply_c[si], grid.supply_c[si + 1U], true);
-    const auto sample = [values](size_t ambient_index, size_t supply_index, size_t frequency_index) {
-      return values[(ambient_index * 2U + supply_index) * 10U + frequency_index];
-    };
-    const auto lerp = [](float low, float high, float amount) { return low + (high - low) * amount; };
-    const float a00 = lerp(sample(ai, si, fi), sample(ai, si, fi + 1U), ft);
-    const float a01 = lerp(sample(ai, si + 1U, fi), sample(ai, si + 1U, fi + 1U), ft);
-    const float a10 = lerp(sample(ai + 1U, si, fi), sample(ai + 1U, si, fi + 1U), ft);
-    const float a11 = lerp(sample(ai + 1U, si + 1U, fi), sample(ai + 1U, si + 1U, fi + 1U), ft);
-    return lerp(lerp(a00, a10, at), lerp(a01, a11, at), st);
+  uint16_t manual_or_(uint16_t manual_value, uint16_t derived_value) const {
+    return this->state_.manual_telemetry.enabled ? manual_value : derived_value;
+  }
+
+  struct AxisPosition {
+    size_t index;
+    double fraction;
+  };
+
+  static AxisPosition axis_position_(const double* points, size_t count, double value, bool extrapolate_high) {
+    if (value <= points[0]) return {0U, 0.0};
+    if (value >= points[count - 1U]) {
+      const double fraction = (value - points[count - 2U]) / (points[count - 1U] - points[count - 2U]);
+      return {count - 2U, extrapolate_high ? fraction : std::min(1.0, fraction)};
+    }
+    for (size_t index = 0U; index + 1U < count; index++)
+      if (value <= points[index + 1U])
+        return {index, (value - points[index]) / (points[index + 1U] - points[index])};
+    return {count - 2U, 1.0};
+  }
+
+  static bool interpolate_grid_(const PerformanceGrid& grid, const float* values, double frequency, double ambient,
+                                double supply, bool extrapolate_frequency, float& output) {
+    const auto fp = axis_position_(grid.frequency_hz, grid.frequency_count, frequency, extrapolate_frequency);
+    const auto ap = axis_position_(grid.ambient_c, grid.ambient_count, ambient, false);
+    const auto sp = axis_position_(grid.supply_c, grid.supply_count, supply, false);
+    double total = 0.0;
+    for (size_t supply_offset = 0U; supply_offset < 2U; supply_offset++)
+      for (size_t ambient_offset = 0U; ambient_offset < 2U; ambient_offset++)
+        for (size_t frequency_offset = 0U; frequency_offset < 2U; frequency_offset++) {
+          const double weight = (supply_offset == 0U ? 1.0 - sp.fraction : sp.fraction) *
+                                (ambient_offset == 0U ? 1.0 - ap.fraction : ap.fraction) *
+                                (frequency_offset == 0U ? 1.0 - fp.fraction : fp.fraction);
+          if (weight == 0.0) continue;
+          const size_t index = ((sp.index + supply_offset) * grid.ambient_count + ap.index + ambient_offset) *
+                                   grid.frequency_count + fp.index + frequency_offset;
+          const float sample = values[index];
+          if (!std::isfinite(sample)) return false;
+          total += sample * weight;
+        }
+    output = static_cast<float>(total);
+    return true;
   }
 
   void update_pump_(float dt_s) {
@@ -625,8 +687,8 @@ class QuattOduSimulatorModel {
         this->performance_at(this->state_.measured_frequency_hz, this->state_.outside_temperature_c,
                              std::max(this->state_.water_in_temperature_c, this->state_.water_out_temperature_c));
     this->state_.high_frequency_performance_synthetic = performance.high_frequency_synthetic;
-    this->state_.thermal_power_w = performance.thermal_power_w;
-    this->state_.cop = performance.cop;
+    this->state_.thermal_power_w = performance.valid ? performance.thermal_power_w : 0.0f;
+    this->state_.cop = performance.valid ? performance.cop : 0.0f;
     this->state_.electrical_power_w =
         performance.thermal_power_w <= 0.0f ? 0.0f : performance.thermal_power_w / performance.cop;
     this->state_.ac_current_a =
