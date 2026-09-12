@@ -104,3 +104,29 @@ not `API input`. Do not claim a controller API-supply-temperature test until
 that product input exists. Use the thermostat simulator for physical OpenTherm
 room/setpoint tests; use the controller API inputs to test source selection,
 freshness, fallback and strategy behavior.
+
+## Controller log stream
+
+OpenQuatt PR #674 adds a dedicated Server-Sent Events endpoint for new
+controller log lines:
+
+```sh
+curl -fsS -N --max-time 120 \
+  'http://openquatt-test.local/openquatt/logs/stream' > controller-logstream.txt || [ $? -eq 28 ]
+```
+
+Use it for a bounded capture around a HIL scenario that needs diagnostic
+evidence, for example M2 UART recovery, Modbus timeouts or an intermittent
+lifecycle issue. Start the capture before the stimulus and stop it afterwards;
+keep the artifact with the test result. A failed endpoint (for example HTTP
+404 on older firmware) means the stream is unavailable, not that the HIL run
+must stop.
+
+Exit status `28` is expected when the 120-second capture reaches its intended
+time limit; other `curl` errors are failures to record the requested evidence.
+
+The controller supports at most two stream clients. Use one client by default,
+never leave an unbounded capture running, and do not treat log text alone as a
+PASS verdict. `/openquatt/logs/recent` remains the bounded history/backfill
+endpoint; the stream accepts `?since=`, `?last_seq=` or `Last-Event-ID` for
+reconnect when a specific investigation needs continuity.

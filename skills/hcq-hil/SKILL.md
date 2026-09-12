@@ -58,6 +58,13 @@ If that harness is not in the active checkout, perform the same reachability
 and web-telemetry smoke checks directly. Missing local HIL files are not a
 blocker and must never be reported as the reason a test cannot start.
 
+For a controller build that includes OpenQuatt PR #674 or later, use the
+dedicated SSE log stream described in [the REST reference](references/esphome-rest.md)
+as supplementary evidence for communication, UART, lifecycle or intermittent
+failures. Start one bounded capture before the scenario and stop it afterwards.
+The stream is diagnostic evidence, not a PASS condition by itself; ordinary
+HIL assertions still require observable controller behavior and counters.
+
 For a requested M2 parity- or framing-fault test, read
 [the verified REST interface](references/esphome-rest.md) and use
 `scripts/run_m2_uart_fault.sh`. This helper makes only the documented simulator
@@ -87,6 +94,9 @@ controller exposes independent UART-fault evidence.
   claim a supply-temperature API test.
 - Check the actual behavior and relevant counters; do not treat a successful
   request as a pass.
+- For diagnosis-relevant changes, include a bounded controller logstream
+  capture when the endpoint is present. Do not use more than one stream client
+  by default; the controller accepts at most two.
 - Restore normal simulator state when finished.
 - For a normal “test deze PR”-request, run the read-only smoke test directly.
   Ask one concise question only if the relevant test needs OTA/flash, reboot,
