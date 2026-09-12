@@ -48,6 +48,9 @@ void QuattOduModbusHub::loop() {
 void QuattOduModbusHub::on_shutdown() {
   this->pending_.active = false;
   this->pending_uart_fault_ = UartFaultMode::NONE;
+  this->pending_uart_response_parity_fault_ = false;
+  if (this->tx_response_parity_fault_queued_)
+    this->restore_uart_after_fault_();
   if (this->uart_fault_active_)
     this->restore_uart_after_fault_();
   this->uart_fault_active_ = false;
@@ -58,6 +61,8 @@ void QuattOduModbusHub::on_shutdown() {
   this->tx_frame_size_ = 0U;
   this->tx_frame_offset_ = 0U;
   this->tx_odu_index_ = 0xFFU;
+  this->tx_response_parity_fault_ = false;
+  this->tx_response_parity_fault_queued_ = false;
 }
 
 void QuattOduModbusHub::dump_config() {
@@ -77,16 +82,29 @@ void QuattOduModbusHub::request_uart_framing_fault() {
   this->request_uart_fault_(UartFaultMode::FRAMING);
 }
 
+void QuattOduModbusHub::request_uart_response_parity_fault() {
+  if (!this->uart_fault_injection_enabled_ || this->pending_uart_fault_ != UartFaultMode::NONE ||
+      this->pending_uart_response_parity_fault_ || this->uart_fault_active_ || this->tx_active_) {
+    this->uart_fault_rejected_count_++;
+    return;
+  }
+  this->pending_uart_response_parity_fault_ = true;
+}
+
 void QuattOduModbusHub::set_uart_fault_injection_enabled(bool enabled) {
   this->uart_fault_injection_enabled_ = enabled;
-  if (!enabled)
+  if (!enabled) {
     this->pending_uart_fault_ = UartFaultMode::NONE;
+    this->pending_uart_response_parity_fault_ = false;
+  }
 }
 
 void QuattOduModbusHub::reset_diagnostics() {
   this->request_sequence_ = 0U;
   this->uart_parity_fault_count_ = 0U;
   this->uart_framing_fault_count_ = 0U;
+  this->uart_response_parity_fault_count_ = 0U;
+  this->uart_response_parity_fault_retry_count_ = 0U;
   this->uart_fault_rejected_count_ = 0U;
   this->uart_fault_restore_error_count_ = 0U;
 }
@@ -260,6 +278,17 @@ void QuattOduModbusHub::process_request_(uint8_t address,
                                          bool respond) {
   if (this->parent_simulator_ == nullptr || pdu.empty())
     return;
+  if (this->awaiting_response_parity_fault_retry_ &&
+      static_cast<int32_t>(millis() - this->response_parity_fault_retry_deadline_ms_) <= 0 &&
+      address == this->response_parity_fault_retry_address_ &&
+      pdu.size() == this->response_parity_fault_retry_pdu_size_ &&
+      std::equal(pdu.begin(), pdu.end(), this->response_parity_fault_retry_pdu_.begin())) {
+    this->uart_response_parity_fault_retry_count_++;
+    this->awaiting_response_parity_fault_retry_ = false;
+  }
+  this->last_request_address_ = address;
+  this->last_request_pdu_size_ = static_cast<uint16_t>(pdu.size());
+  std::copy(pdu.begin(), pdu.end(), this->last_request_pdu_.begin());
   const uint8_t function_code = pdu[0];
   const uint16_t start_address =
       pdu.size() >= 3U ? modbus::helpers::get_data<uint16_t>(pdu.data(), 1U)
@@ -477,6 +506,16 @@ bool QuattOduModbusHub::send_pdu_(uint8_t address, const uint8_t *pdu,
   this->tx_frame_[pdu_size + 2U] = static_cast<uint8_t>(crc >> 8U);
   const uint16_t frame_size = pdu_size + 3U;
 
+  // Only fault FC3 read replies: the controller can safely retry those without
+  // duplicating a write-side effect, making the retry counter unambiguous.
+  this->tx_response_parity_fault_ = this->pending_uart_response_parity_fault_ &&
+                                   this->last_request_pdu_size_ >= 5U &&
+                                   this->last_request_pdu_[0] == 0x03U && frame_size > 4U;
+  this->tx_response_parity_fault_queued_ = false;
+  this->tx_response_parity_fault_offset_ = 3U;
+  if (this->tx_response_parity_fault_)
+    this->pending_uart_response_parity_fault_ = false;
+
   if (this->flow_control_pin_ != nullptr)
     this->flow_control_pin_->digital_write(true);
   const uint32_t transmit_us =
@@ -513,12 +552,53 @@ void QuattOduModbusHub::pump_tx_() {
   auto *idf_uart = static_cast<uart::IDFUARTComponent *>(this->parent_);
   const auto uart_num =
       static_cast<uart_port_t>(idf_uart->get_hw_serial_number());
+  if (this->tx_response_parity_fault_ &&
+      this->tx_frame_offset_ == this->tx_response_parity_fault_offset_) {
+    if (!this->tx_response_parity_fault_queued_) {
+      if (uart_set_parity(uart_num, UART_PARITY_ODD) != ESP_OK) {
+        abort_tx("Failed to configure response parity fault");
+        return;
+      }
+      const int written = uart_tx_chars(
+          uart_num, reinterpret_cast<const char *>(this->tx_frame_.data()) + this->tx_frame_offset_, 1U);
+      if (written != 1) {
+        this->restore_uart_after_fault_();
+        abort_tx("Failed to queue response parity fault byte");
+        return;
+      }
+      this->tx_frame_offset_++;
+      this->tx_response_parity_fault_queued_ = true;
+      this->uart_response_parity_fault_count_++;
+      this->response_parity_fault_retry_address_ = this->last_request_address_;
+      this->response_parity_fault_retry_pdu_size_ = this->last_request_pdu_size_;
+      std::copy_n(this->last_request_pdu_.begin(), this->last_request_pdu_size_,
+                  this->response_parity_fault_retry_pdu_.begin());
+      this->response_parity_fault_retry_deadline_ms_ = millis() + 1000U;
+      this->awaiting_response_parity_fault_retry_ = true;
+      return;
+    }
+
+    const esp_err_t status = uart_wait_tx_done(uart_num, 0);
+    if (status == ESP_ERR_TIMEOUT)
+      return;
+    if (status != ESP_OK || !this->restore_uart_after_fault_()) {
+      abort_tx("Failed to restore UART after response parity fault");
+      return;
+    }
+    this->tx_response_parity_fault_ = false;
+    this->tx_response_parity_fault_queued_ = false;
+  }
   if (this->tx_frame_offset_ < this->tx_frame_size_) {
+    uint16_t remaining = this->tx_frame_size_ - this->tx_frame_offset_;
+    if (this->tx_response_parity_fault_ &&
+        this->tx_frame_offset_ < this->tx_response_parity_fault_offset_) {
+      remaining = this->tx_response_parity_fault_offset_ - this->tx_frame_offset_;
+    }
     const int written =
         uart_tx_chars(uart_num,
                       reinterpret_cast<const char *>(this->tx_frame_.data()) +
                           this->tx_frame_offset_,
-                      this->tx_frame_size_ - this->tx_frame_offset_);
+                      remaining);
     if (written < 0) {
       abort_tx("Failed to queue Modbus response bytes");
       return;
@@ -537,6 +617,8 @@ void QuattOduModbusHub::pump_tx_() {
       this->flow_control_pin_->digital_write(false);
     this->tx_active_ = false;
     this->tx_odu_index_ = 0xFFU;
+    this->tx_response_parity_fault_ = false;
+    this->tx_response_parity_fault_queued_ = false;
   } else if (status != ESP_ERR_TIMEOUT) {
     abort_tx("Failed while waiting for Modbus UART TX completion");
   } else if (static_cast<int32_t>(millis() - this->tx_deadline_ms_) >= 0) {
