@@ -54,6 +54,14 @@ explicitly; the harness deliberately has no URL defaults. For a standard
 read-only smoke test, use its `run-input-sources.mjs` runner with `--stage
 smoke` and the controller/simulator URLs above.
 
+Use the current `dev` or requested-PR checkout for the harness, never a
+historic HIL worktree. The combined desktop simulator publishes
+`openquatt-modbus-opentherm-v2`; its normal runner must expect that exact
+contract. Do not silence a v1/v2 mismatch with
+`--expected-simulator-contract`: update the runner, its tests and
+`docs/hil-testing.md` together when an intentional simulator-contract change
+is introduced. An unknown contract remains a fail-closed compatibility check.
+
 If that harness is not in the active checkout, perform the same reachability
 and web-telemetry smoke checks directly. Missing local HIL files are not a
 blocker and must never be reported as the reason a test cannot start.
