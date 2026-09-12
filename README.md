@@ -175,6 +175,16 @@ supports:
 - wrong byte count or an incomplete read response;
 - one-shot reboot on a selected request start address.
 
+For controller UART-error handling, M2 also has deliberately disabled one-shot
+physical UART fault injection. Enable `M2 UART fault injection enabled` and
+then use one of the parity or framing buttons. A parity fault transmits one
+byte with odd parity on the otherwise `19200 8E1` bus. A framing fault
+transmits one byte followed by a BREAK condition. The simulator waits for an
+idle bus, exclusively drives the RS485 transceiver during the fault, and
+restores even parity and receive mode afterwards. The diagnostics provide the
+injection, rejected-request and restore-error counters. This is M2-only: M1
+requires a second physically connected RS485 path.
+
 The diagnostics show request/read/write/drop/exception counts, invalid address
 and write counts, capability violations, highest F-level, last request/write
 and request age. Reset them before each measurement.

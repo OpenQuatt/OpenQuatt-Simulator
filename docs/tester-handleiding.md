@@ -368,7 +368,38 @@ Noteer of maak screenshots van:
 
 Reset de diagnostiek niet voordat deze informatie is vastgelegd.
 
-## 17. Beperkingen
+## 17. M2 UART-foutinspuiting
+
+Gebruik dit alleen voor een controllerwijziging die UART parity- of
+framingfouten op de M2-RS485-bus moet afhandelen. De functie is standaard uit
+na elke reboot.
+
+1. Zet beide ODU-profielen op de normale testprofielen en bevestig dat de
+   controller beide ODU's leest.
+2. Reset `ODU diagnostics` en noteer de beginwaarden van de vier `M2 UART`
+   diagnosetellers.
+3. Schakel `M2 UART fault injection enabled` in.
+4. Druk precies één keer op `Inject M2 UART parity error` of `Inject M2 UART
+   framing error`.
+5. Wacht tot de bijbehorende `faults injected`-teller één hoger staat en
+   `M2 UART fault injection active` weer uit is. `M2 UART fault restore
+   errors` moet nul blijven.
+6. Controleer dat de normale M2-requests daarna weer oplopen en de controller
+   verbinding houdt of volgens de geteste herstelstrategie herstelt.
+7. Schakel `M2 UART fault injection enabled` weer uit.
+
+De parity-actie verstuurt één byte met oneven parity op de verder `19200 8E1`
+bus. De framing-actie verstuurt één byte gevolgd door een UART BREAK. De
+simulator wacht op een idle bus, neemt de RS485-zender tijdelijk exclusief over
+en herstelt daarna even parity en receive-mode. Deze test bewijst pas de
+controllerfiltering wanneer de controller zelf een UART-foutmelding of
+diagnostiek vastlegt; de simulatorteller bewijst alleen dat de fout is
+uitgezonden.
+
+De functie is alleen beschikbaar op M2. Voor M1 is een tweede fysiek
+aangesloten RS485-lijn nodig.
+
+## 18. Beperkingen
 
 - De simulator bewijst geen werkelijk hydraulisch, thermisch of elektrisch
   ODU-gedrag.

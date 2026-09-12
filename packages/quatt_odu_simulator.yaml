@@ -172,6 +172,14 @@ switch:
     restore_mode: ALWAYS_OFF
 
   - platform: template
+    id: odu_uart_fault_injection_enabled
+    name: "M2 UART fault injection enabled"
+    icon: mdi:alert-outline
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
     id: odu_fast_simulation
     name: "ODU fast simulation mode"
     icon: mdi:fast-forward
@@ -263,6 +271,10 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
 
 binary_sensor:
+  - platform: template
+    name: "M2 UART fault injection active"
+    entity_category: diagnostic
+    lambda: return id(odu_modbus_hub)->uart_fault_active();
   - platform: template
     name: "ODU 1 high-frequency performance synthetic"
     entity_category: diagnostic
@@ -506,6 +518,38 @@ number:
 
 sensor:
   - platform: template
+    name: "M2 UART parity faults injected"
+    icon: mdi:alert-outline
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_modbus_hub)->uart_parity_fault_count();
+  - platform: template
+    name: "M2 UART framing faults injected"
+    icon: mdi:alert-outline
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_modbus_hub)->uart_framing_fault_count();
+  - platform: template
+    name: "M2 UART fault injections rejected"
+    icon: mdi:alert-outline
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_modbus_hub)->uart_fault_rejected_count();
+  - platform: template
+    name: "M2 UART fault restore errors"
+    icon: mdi:alert-outline
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_modbus_hub)->uart_fault_restore_error_count();
+  - platform: template
     name: "Simulator free internal heap"
     unit_of_measurement: B
     entity_category: diagnostic
@@ -739,6 +783,20 @@ button:
           id(odu_modbus_hub)->reset_diagnostics();
 
   - platform: template
+    name: "Inject M2 UART parity error"
+    icon: mdi:alert-outline
+    entity_category: config
+    on_press:
+      - lambda: id(odu_modbus_hub)->request_uart_parity_fault();
+
+  - platform: template
+    name: "Inject M2 UART framing error"
+    icon: mdi:alert-outline
+    entity_category: config
+    on_press:
+      - lambda: id(odu_modbus_hub)->request_uart_framing_fault();
+
+  - platform: template
     name: "ODU 1 restore factory tables"
     entity_category: config
     on_press:
@@ -805,6 +863,7 @@ interval:
           hub.set_malformed_injection(malformed, lroundf(id(odu_malformed_start_address).state));
           hub.set_reboot_injection(id(odu_reboot_on_read_enabled).state,
                                    lroundf(id(odu_reboot_start_address).state));
+          hub.set_uart_fault_injection_enabled(id(odu_uart_fault_injection_enabled).state);
           for (uint8_t index = 0; index < 2; index++) {
             auto &settings = simulator.model(index).mutable_settings();
             settings.experimental_high_frequency_extrapolation =

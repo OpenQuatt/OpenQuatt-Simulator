@@ -45,6 +45,32 @@ waarde; links en counters zijn gezond.
 
 **Pass:** de controller leest beide actieve ODU's zonder protocolfouten.
 
+## M2-UART-001 — UART parity- en framingfilter
+
+**Doel:** de controller verdraagt fysieke UART-fouten op de M2-RS485-lijn en
+herstelt normale ODU-communicatie.
+
+1. Voer `ODU-BASE-001` uit. Reset daarna de ODU-diagnostiek op de simulator.
+2. Noteer op simulator en controller de beginwaarden, firmwareversies en
+   relevante UART/Modbus-logs.
+3. Schakel `M2 UART fault injection enabled` in.
+4. Druk eenmaal op `Inject M2 UART parity error`. Wacht tot de parity-teller
+   precies één hoger staat, `M2 UART fault injection active` uit staat en
+   `M2 UART fault restore errors` nul is.
+5. Controleer dat M2-requests weer oplopen en leg de controllerdiagnostiek en
+   eventuele reconnect vast.
+6. Herhaal stap 4 en 5 met `Inject M2 UART framing error`.
+7. Schakel de injectieswitch uit en controleer nogmaals normale M2-operatie.
+
+**Pass:** beide injectietellers stijgen exact eenmaal, er zijn geen
+restore-errors en de controller hervat M2-communicatie. Wanneer de te testen
+controllerfirmware een UART-error-counter of logregel heeft, moet die voor
+beide fouttypes zichtbaar zijn. Zonder die controllerwaarneming is de
+foutinspuiting en het herstel bewezen, maar niet de interne controllerfilter.
+
+**Herstel:** injectieswitch uit; beide ODU-profielen actief; geen lopende
+injectie.
+
 ## Nieuwe testcase toevoegen
 
 Gebruik: identifier, doel, beginstaat, expliciet gemarkeerde mutaties,
