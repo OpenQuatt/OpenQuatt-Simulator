@@ -18,6 +18,18 @@ The fixed lab is:
 - The testcontroller must be named `openquatt-test`, never `openquatt`, so it
   does not conflict with production at `openquatt.local`.
 
+## Physical safety boundary
+
+This desktop setup contains no real heat pump, boiler, thermostat or hydraulic
+installation: all OpenTherm and ODU peers are simulated. Normal HIL scenarios,
+input changes and documented simulator fault injection therefore cannot start
+or damage a physical heating appliance. This gives the tester room to exercise
+the simulated control paths without a live thermal system.
+
+That boundary does not authorize actions outside this lab: keep production
+devices out of scope, verify the testcontroller identity and cabling, and ask
+before an OTA, reboot or an unlisted physical-bus experiment.
+
 ## Simulator source
 
 The repository root
