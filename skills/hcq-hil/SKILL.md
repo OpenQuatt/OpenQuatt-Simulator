@@ -117,7 +117,12 @@ controller exposes independent UART-fault evidence.
 - For diagnosis-relevant changes, include a bounded controller logstream
   capture when the endpoint is present. Do not use more than one stream client
   by default; the controller accepts at most two.
-- Restore normal simulator state when finished.
+- Do not restore normal simulator inputs, ODU profiles or registers after a
+  HIL run. The desktop simulator is flashed with fresh firmware before every
+  next test, so restoring it adds time without improving the next run. Record
+  the final simulator state with the result instead.
+- Still leave an active fault injection disabled: use the fault helper or turn
+  its switch off before ending the current run.
 - For a normal “test deze PR”-request, run the read-only smoke test directly.
   Ask one concise question only if the relevant test needs OTA/flash, reboot,
   fault injection, a change outside the requested diff, or an action that
