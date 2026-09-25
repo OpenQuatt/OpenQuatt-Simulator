@@ -120,6 +120,12 @@ struct OduState {
   bool defrost{false};               // defrost injected via the ODU defrost switch
   bool forced_defrost{false};        // defrost latched by a 3999=4 write (independent of the switch)
   float forced_defrost_remaining_s{0.0f};
+  // Bottom-plate heating (registers 3236..3238): mode, start temperature (raw
+  // = degC + 30) and stop delta. Defaults follow the variant: V1 defaults to
+  // mode 1, V1.5/V2 to mode 3.
+  uint8_t bottom_plate_mode{1U};
+  uint8_t bottom_plate_start_raw{34U};
+  uint8_t bottom_plate_stop_delta{3U};
   bool high_frequency_performance_synthetic{false};
   ManualTelemetry manual_telemetry{};
   uint16_t defrost_mode{0U};
@@ -169,6 +175,8 @@ class QuattOduSimulatorModel {
     const auto& definition = profile_definition(profile);
     this->state_.cooling_table = definition.factory_cooling;
     this->state_.heating_table = definition.factory_heating;
+    // Bottom-plate default per generation: V1 uses mode 1, V1.5/V2 mode 3.
+    this->state_.bottom_plate_mode = profile == Profile::V1 ? 1U : 3U;
   }
 
   bool enabled() const { return profile_definition(this->state_.profile).enabled; }
@@ -253,6 +261,9 @@ class QuattOduSimulatorModel {
   bool can_write_register(uint16_t address, uint16_t value) const {
     if (!this->enabled()) return false;
     if (address == 3275U) return this->defrost_mode_supported_(value);
+    if (address == 3236U) return value <= 3U;      // bottom-plate mode
+    if (address == 3237U) return value <= 60U;     // bottom-plate start temperature (raw)
+    if (address == 3238U) return value <= 30U;     // bottom-plate stop delta
     if (address == 1999U) return true;
     if (address == 2006U) return value <= 1U;
     if (address == 2010U) return value == 0U || value == 4096U;
@@ -457,6 +468,18 @@ class QuattOduSimulatorModel {
       value = this->state_.defrost_delta[address - 3414U];
       return true;
     }
+    if (address == 3236U) {
+      value = this->state_.bottom_plate_mode;
+      return true;
+    }
+    if (address == 3237U) {
+      value = this->state_.bottom_plate_start_raw;
+      return true;
+    }
+    if (address == 3238U) {
+      value = this->state_.bottom_plate_stop_delta;
+      return true;
+    }
     if (address >= 2999U && address <= 3510U) {
       value = address == 2999U ? 0x51A1U : 0U;
       return true;
@@ -486,6 +509,18 @@ class QuattOduSimulatorModel {
     if (address == 3275U) {
       this->state_.defrost_mode = value;
       this->state_.defrost_base[5] = value;
+      return true;
+    }
+    if (address == 3236U) {
+      this->state_.bottom_plate_mode = static_cast<uint8_t>(value);
+      return true;
+    }
+    if (address == 3237U) {
+      this->state_.bottom_plate_start_raw = static_cast<uint8_t>(value);
+      return true;
+    }
+    if (address == 3238U) {
+      this->state_.bottom_plate_stop_delta = static_cast<uint8_t>(value);
       return true;
     }
     if (address >= 3000U && address <= 3069U) {
