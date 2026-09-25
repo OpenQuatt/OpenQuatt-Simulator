@@ -315,6 +315,30 @@ binary_sensor:
     lambda: return id(odu_simulator)->model(1).state().table_dirty;
 
 number:
+  # Duration of a forced (3999=4) defrost cycle before the ODU returns to its
+  # requested working mode. Independent of the ODU defrost injection switch.
+  - platform: template
+    id: odu_1_forced_defrost_duration_s
+    name: "ODU 1 forced defrost duration s"
+    entity_category: config
+    optimistic: true
+    unit_of_measurement: "s"
+    min_value: 0
+    max_value: 600
+    step: 1
+    initial_value: "45"
+
+  - platform: template
+    id: odu_2_forced_defrost_duration_s
+    name: "ODU 2 forced defrost duration s"
+    entity_category: config
+    optimistic: true
+    unit_of_measurement: "s"
+    min_value: 0
+    max_value: 600
+    step: 1
+    initial_value: "45"
+
   - platform: template
     id: odu_1_pending_address
     name: "ODU 1 Modbus address (pending)"
@@ -493,6 +517,32 @@ number:
     initial_value: 0
     min_value: 0
     max_value: 2
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_1_manual_compressor_frequency
+    name: "ODU 1 manual compressor frequency 2103"
+    unit_of_measurement: Hz
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 120
+    step: 1
+    mode: box
+
+  - platform: template
+    id: odu_2_manual_compressor_frequency
+    name: "ODU 2 manual compressor frequency 2103"
+    unit_of_measurement: Hz
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    min_value: 0
+    max_value: 120
     step: 1
     mode: box
 
@@ -944,7 +994,7 @@ text_sensor:
     lambda: |-
       const auto &s = id(odu_simulator)->model(0).state();
       const uint32_t age = s.protocol.last_request_ms == 0 ? UINT32_MAX : millis() - s.protocol.last_request_ms;
-      char text[240];
+      char text[320];
       snprintf(text, sizeof(text), "addr=%u profile=%s mode=%u req=%lu read=%lu write=%lu drop=%lu exc=%lu bad_addr=%lu bad_write=%lu cap=%lu maxF=%u age_ms=%lu last=FC%u R%u/%u W%u=%u",
                static_cast<unsigned>(id(odu_simulator)->get_address(0)),
                esphome::quatt_odu_simulator::profile_definition(s.profile).label,
@@ -958,10 +1008,16 @@ text_sensor:
                static_cast<unsigned>(s.protocol.highest_requested_level), static_cast<unsigned long>(age),
                static_cast<unsigned>(s.protocol.last_function_code),
                static_cast<unsigned>(s.protocol.last_start_address),
-               static_cast<unsigned>(s.protocol.last_register_count),
-               static_cast<unsigned>(s.protocol.last_write_address),
-               static_cast<unsigned>(s.protocol.last_write_value));
-      return {text};
+                static_cast<unsigned>(s.protocol.last_register_count),
+                static_cast<unsigned>(s.protocol.last_write_address),
+                static_cast<unsigned>(s.protocol.last_write_value));
+       char extra[64];
+       snprintf(extra, sizeof(extra), " w3999=%u fdef=%u fdefcnt=%lu",
+                static_cast<unsigned>(s.protocol.last_3999_value),
+                static_cast<unsigned>(s.forced_defrost ? 1 : 0),
+                static_cast<unsigned long>(s.protocol.forced_defrost_count));
+       strncat(text, extra, sizeof(text) - strlen(text) - 1);
+       return {text};
   - platform: template
     name: "ODU 2 diagnostics"
     entity_category: diagnostic
@@ -969,7 +1025,7 @@ text_sensor:
     lambda: |-
       const auto &s = id(odu_simulator)->model(1).state();
       const uint32_t age = s.protocol.last_request_ms == 0 ? UINT32_MAX : millis() - s.protocol.last_request_ms;
-      char text[240];
+      char text[320];
       snprintf(text, sizeof(text), "addr=%u profile=%s mode=%u req=%lu read=%lu write=%lu drop=%lu exc=%lu bad_addr=%lu bad_write=%lu cap=%lu maxF=%u age_ms=%lu last=FC%u R%u/%u W%u=%u",
                static_cast<unsigned>(id(odu_simulator)->get_address(1)),
                esphome::quatt_odu_simulator::profile_definition(s.profile).label,
@@ -983,10 +1039,16 @@ text_sensor:
                static_cast<unsigned>(s.protocol.highest_requested_level), static_cast<unsigned long>(age),
                static_cast<unsigned>(s.protocol.last_function_code),
                static_cast<unsigned>(s.protocol.last_start_address),
-               static_cast<unsigned>(s.protocol.last_register_count),
-               static_cast<unsigned>(s.protocol.last_write_address),
-               static_cast<unsigned>(s.protocol.last_write_value));
-      return {text};
+                static_cast<unsigned>(s.protocol.last_register_count),
+                static_cast<unsigned>(s.protocol.last_write_address),
+                static_cast<unsigned>(s.protocol.last_write_value));
+       char extra[64];
+       snprintf(extra, sizeof(extra), " w3999=%u fdef=%u fdefcnt=%lu",
+                static_cast<unsigned>(s.protocol.last_3999_value),
+                static_cast<unsigned>(s.forced_defrost ? 1 : 0),
+                static_cast<unsigned long>(s.protocol.forced_defrost_count));
+       strncat(text, extra, sizeof(text) - strlen(text) - 1);
+       return {text};
 
 button:
   - platform: template
@@ -1072,7 +1134,10 @@ interval:
           simulator.set_manual_telemetry_enabled(1, id(odu_2_manual_telemetry_override).state);
           simulator.set_manual_working_mode(0, lroundf(id(odu_1_manual_working_mode).state));
           simulator.set_manual_working_mode(1, lroundf(id(odu_2_manual_working_mode).state));
+          simulator.set_manual_compressor_frequency(0, lroundf(id(odu_1_manual_compressor_frequency).state));
+          simulator.set_manual_compressor_frequency(1, lroundf(id(odu_2_manual_compressor_frequency).state));
           simulator.set_manual_ac_voltage(0, id(odu_1_manual_ac_voltage).state);
+
           simulator.set_manual_ac_voltage(1, id(odu_2_manual_ac_voltage).state);
           simulator.set_manual_ac_current(0, id(odu_1_manual_ac_current).state);
           simulator.set_manual_ac_current(1, id(odu_2_manual_ac_current).state);
@@ -1100,8 +1165,10 @@ interval:
               id(odu_external_system_pump_flow).state;
           simulator.set_freeze_frequency(0, id(odu_1_freeze_frequency).state);
           simulator.set_freeze_frequency(1, id(odu_2_freeze_frequency).state);
-          simulator.set_hold_level_during_defrost(0, id(odu_1_hold_level_during_defrost).state);
-          simulator.set_hold_level_during_defrost(1, id(odu_2_hold_level_during_defrost).state);
+           simulator.set_hold_level_during_defrost(0, id(odu_1_hold_level_during_defrost).state);
+           simulator.set_hold_level_during_defrost(1, id(odu_2_hold_level_during_defrost).state);
+           simulator.set_forced_defrost_duration_s(0, id(odu_1_forced_defrost_duration_s).state);
+           simulator.set_forced_defrost_duration_s(1, id(odu_2_forced_defrost_duration_s).state);
           simulator.set_fault_word(0, 0, lroundf(id(odu_1_fault_word_1).state));
           simulator.set_fault_word(0, 1, lroundf(id(odu_1_fault_word_2).state));
           simulator.set_fault_word(0, 2, lroundf(id(odu_1_fault_word_3).state));

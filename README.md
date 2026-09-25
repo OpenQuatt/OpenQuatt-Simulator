@@ -9,7 +9,7 @@ can simultaneously simulate:
   Modbus addresses 1 and 2.
 
 The combined firmware publishes compatibility contract
-`openquatt-modbus-opentherm-v2` and simulator version `v0.4.0`. HIL clients
+`openquatt-modbus-opentherm-v2` and simulator version `v0.4.1`. HIL clients
 must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
@@ -126,9 +126,11 @@ restore button. Legacy reads of the extension return recognizable poison
 values and increment `Legacy extension read violation`.
 
 The model implements actuator writes at `1999`, `2006`, `2010`, `2015` and
-`3999`, every runtime register at `2099..2138`, core identity, customer/model
-text, synthetic serial metadata and the EEPROM read range used by OpenQuatt.
-The generated contract documents every supported address and its confidence:
+`3999`, the defrost method write at `3275`, the defrost parameter blocks at
+`3270..3280`, `3307..3315`, `3336..3341` and `3414..3427`, every runtime
+register at `2099..2138`, core identity, customer/model text, synthetic serial
+metadata and the EEPROM read range used by OpenQuatt. The generated contract
+documents every supported address and its confidence:
 [docs/quatt-odu-register-contract.md](docs/quatt-odu-register-contract.md).
 
 ## Dynamic model
@@ -158,9 +160,10 @@ The V2 snapshot uses the complete CiC 4.2.0 10 Hz × 17 ambient × 8 supply
 surface. Masked cells and inputs outside the V2 ambient/supply domain yield no
 synthetic performance output. For deterministic HIL fixtures, each ODU has an
 off-by-default `manual telemetry override`. It supplies only the documented
-raw readbacks for `2099`, `2100`, `2101`, `2105`, `2108`, `2133`, `2134`,
-`2137` and `2138`; it does not alter dynamic state or the independent defrost
-register `2118`.
+raw readbacks for `2099`, `2100`, `2101`, `2103`, `2105`, `2108`, `2133`,
+`2134`, `2137` and `2138`; it does not alter dynamic state or the independent
+defrost register `2118`.
+
 
 Defrost can be injected per ODU. The defrost register and status bit are set,
 water-out temporarily falls, and `Hold physical level during defrost` controls

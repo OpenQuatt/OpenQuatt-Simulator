@@ -30,7 +30,7 @@ struct RegisterRangeDescriptor {
   Confidence confidence;
 };
 
-inline constexpr std::array<RegisterDescriptor, 53> REGISTER_DESCRIPTORS = {{
+inline constexpr std::array<RegisterDescriptor, 54> REGISTER_DESCRIPTORS = {{
     {1999U, 1U, "compressor_level", Access::READ_WRITE, 1.0f, 0.0f, 0x1EU, Confidence::CONTROLLER_CONTRACT, false},
     {2006U, 1U, "silent_mode", Access::READ_WRITE, 1.0f, 0.0f, 0x1EU, Confidence::CONTROLLER_CONTRACT, false},
     {2010U, 1U, "pump_mode", Access::READ_WRITE, 1.0f, 0.0f, 0x1EU, Confidence::CONTROLLER_CONTRACT, false},
@@ -76,6 +76,7 @@ inline constexpr std::array<RegisterDescriptor, 53> REGISTER_DESCRIPTORS = {{
     {2137U, 1U, "pump_ipwm_feedback", Access::READ, 1.0f, 0.0f, 0x1EU, Confidence::CONTROLLER_CONTRACT, false},
     {2138U, 1U, "water_flow", Access::READ, 0.618f, 0.0f, 0x1EU, Confidence::CONTROLLER_CONTRACT, false},
     {3999U, 1U, "requested_working_mode", Access::READ_WRITE, 1.0f, 0.0f, 0x1EU, Confidence::CONTROLLER_CONTRACT, false},
+    {3275U, 1U, "defrost_mode", Access::READ_WRITE, 1.0f, 0.0f, 0x1CU, Confidence::CONTROLLER_CONTRACT, false},
     {11004U, 1U, "extended_metadata_11004", Access::READ, 1.0f, 0.0f, 0x1EU, Confidence::UNKNOWN, false},
     {11005U, 1U, "extended_metadata_11005", Access::READ, 1.0f, 0.0f, 0x1EU, Confidence::UNKNOWN, false},
     {11006U, 1U, "extended_metadata_11006", Access::READ, 1.0f, 0.0f, 0x1EU, Confidence::UNKNOWN, false},
@@ -86,7 +87,11 @@ inline constexpr std::array<RegisterDescriptor, 53> REGISTER_DESCRIPTORS = {{
     {11161U, 1U, "customer_model_word_1", Access::READ, 1.0f, 0.0f, 0x1EU, Confidence::OBSERVED, false},
 }};
 
-inline constexpr std::array<RegisterRangeDescriptor, 6> REGISTER_RANGE_DESCRIPTORS = {{
+inline constexpr std::array<RegisterRangeDescriptor, 10> REGISTER_RANGE_DESCRIPTORS = {{
+    {3270U, 3280U, "defrost_base", Access::READ, 0x1EU, Confidence::SYNTHETIC},
+    {3307U, 3315U, "defrost_timing", Access::READ, 0x1EU, Confidence::SYNTHETIC},
+    {3336U, 3341U, "defrost_coil", Access::READ, 0x1EU, Confidence::SYNTHETIC},
+    {3414U, 3427U, "defrost_delta", Access::READ, 0x1CU, Confidence::SYNTHETIC},
     {2999U, 3510U, "eeprom_fixture", Access::READ, 0x1EU, Confidence::UNKNOWN},
     {3000U, 3021U, "base_frequency_table", Access::READ_WRITE, 0x1EU, Confidence::OBSERVED},
     {3050U, 3069U, "v2_frequency_extension", Access::READ_WRITE, 0x10U, Confidence::CONTROLLER_CONTRACT},

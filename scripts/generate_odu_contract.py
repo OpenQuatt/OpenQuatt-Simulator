@@ -82,7 +82,7 @@ def validate(registers: dict, profiles: dict, performance: dict) -> None:
     if missing_runtime:
         raise ValueError(f"runtime registers are not explicit: {missing_runtime}")
 
-    writable = {1999, 2006, 2010, 2015, 3999}
+    writable = {1999, 2006, 2010, 2015, 3275, 3999}
     for item in registers["registers"]:
         if "write" in item["access"] and item["address"] not in writable:
             raise ValueError(f"unexpected writable exact register {item['address']}")

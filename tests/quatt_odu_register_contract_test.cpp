@@ -29,12 +29,12 @@ int main() {
   for (uint16_t address = 11120U; address <= 11139U; address++) assert(covered(address));
   for (uint16_t address = 11160U; address <= 11179U; address++) assert(covered(address));
   for (uint16_t address = 11219U; address <= 11238U; address++) assert(covered(address));
-  for (uint16_t address : {1999U, 2006U, 2010U, 2015U, 3999U}) assert(covered(address));
+  for (uint16_t address : {1999U, 2006U, 2010U, 2015U, 3275U, 3999U}) assert(covered(address));
 
   for (const auto& descriptor : REGISTER_DESCRIPTORS) {
     const bool expected_write = descriptor.address == 1999U || descriptor.address == 2006U ||
                                 descriptor.address == 2010U || descriptor.address == 2015U ||
-                                descriptor.address == 3999U;
+                                descriptor.address == 3275U || descriptor.address == 3999U;
     assert(access_writable(descriptor.access) == expected_write);
   }
 
@@ -61,8 +61,15 @@ int main() {
   assert((v15_runtime->cooling == std::array<uint8_t, 21>{0, 26, 28, 30, 32, 34, 36, 38, 40, 71, 74}));
   assert(runtime_modified_preset(Profile::V2_NEW) == nullptr);
 
-  const auto extension = REGISTER_RANGE_DESCRIPTORS[2];
-  assert(extension.start == 3050U && extension.end == 3069U);
-  assert(extension.profile_mask == (1U << static_cast<uint8_t>(Profile::V2_NEW)));
+  const RegisterRangeDescriptor *extension = nullptr;
+  for (const auto &candidate : REGISTER_RANGE_DESCRIPTORS) {
+    if (candidate.start == 3050U) {
+      extension = &candidate;
+      break;
+    }
+  }
+  assert(extension != nullptr);
+  assert(extension->start == 3050U && extension->end == 3069U);
+  assert(extension->profile_mask == (1U << static_cast<uint8_t>(Profile::V2_NEW)));
   return 0;
 }
