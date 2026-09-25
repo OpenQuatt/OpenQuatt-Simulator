@@ -56,6 +56,7 @@ registers:
   - {address: 2137, name: pump_ipwm_feedback, access: read, unit: raw, scale: 1, value_source: state.pump_feedback_raw, persistence: derived, confidence: controller_contract}
   - {address: 2138, name: water_flow, access: read, unit: L/h, scale: 0.618, value_source: state.flow_lph, persistence: derived, confidence: controller_contract}
   - {address: 3999, name: requested_working_mode, access: read_write, unit: enum, scale: 1, value_source: state.requested_mode, allowed: [0, 1, 2], persistence: ram, confidence: controller_contract}
+  - {address: 3275, name: defrost_mode, access: read_write, unit: enum, scale: 1, value_source: state.defrost_mode, profiles: [v1_5, v2_old, v2_new], allowed: [0, 1, 3, 4], persistence: ram, confidence: controller_contract}
   - {address: 11004, name: extended_metadata_11004, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[0]', persistence: fixed, confidence: unknown}
   - {address: 11005, name: extended_metadata_11005, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[1]', persistence: fixed, confidence: unknown}
   - {address: 11006, name: extended_metadata_11006, access: read, unit: raw, scale: 1, value_source: 'fixture.extended_metadata[2]', persistence: fixed, confidence: unknown}
@@ -66,6 +67,10 @@ registers:
   - {address: 11161, name: customer_model_word_1, access: read, unit: ASCII, scale: 1, value_source: 'profile.customer_model_words[1]', persistence: fixed, confidence: observed}
 
 ranges:
+  - {start: 3270, end: 3280, name: defrost_base, access: read, unit: raw, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.defrost_base, persistence: ram, confidence: synthetic}
+  - {start: 3307, end: 3315, name: defrost_timing, access: read, unit: raw, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.defrost_timing, persistence: ram, confidence: synthetic}
+  - {start: 3336, end: 3341, name: defrost_coil, access: read, unit: raw, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.defrost_coil, persistence: ram, confidence: synthetic}
+  - {start: 3414, end: 3427, name: defrost_delta, access: read, unit: raw, scale: 1, profiles: [v1_5, v2_old, v2_new], value_source: fixture.defrost_delta, persistence: ram, confidence: synthetic}
   - {start: 2999, end: 3510, name: eeprom_fixture, access: read, unit: raw, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: fixture.eeprom, persistence: fixture, confidence: unknown}
   - {start: 3000, end: 3021, name: base_frequency_table, access: read_write, unit: Hz, scale: 1, profiles: [v1, v1_5, v2_old, v2_new], value_source: state.runtime_frequency_table, allowed: 0..120, persistence: ram_or_explicit_apply, confidence: observed}
   - {start: 3050, end: 3069, name: v2_frequency_extension, access: read_write, unit: Hz, scale: 1, profiles: [v2_new], value_source: state.runtime_frequency_table, allowed: 0..120, persistence: ram_or_explicit_apply, confidence: controller_contract}

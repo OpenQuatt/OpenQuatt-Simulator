@@ -227,6 +227,9 @@ public:
   void set_manual_working_mode(uint8_t index, uint16_t value) {
     this->model(index).set_manual_working_mode_raw(std::min<uint16_t>(value, 2U));
   }
+  void set_manual_compressor_frequency(uint8_t index, uint16_t value) {
+    this->model(index).set_manual_compressor_frequency_raw(std::min<uint16_t>(value, 120U));
+  }
   void set_manual_ac_voltage(uint8_t index, float value) {
     this->model(index).set_manual_ac_voltage_raw(encode_unsigned_(value));
   }
@@ -253,6 +256,9 @@ public:
   }
   void set_hold_level_during_defrost(uint8_t index, bool value) {
     this->model(index).mutable_settings().hold_level_during_defrost = value;
+  }
+  void set_forced_defrost_duration_s(uint8_t index, float value) {
+    this->model(index).mutable_settings().forced_defrost_duration_s = value;
   }
   void restore_factory_tables(uint8_t index) {
     this->model(index).restore_factory_tables();

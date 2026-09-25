@@ -54,6 +54,7 @@ Modbus addresses below are zero-based. A spreadsheet address is therefore Modbus
 | 2137 | 2138 | `pump_ipwm_feedback` | read | raw | 1 | controller_contract | no |
 | 2138 | 2139 | `water_flow` | read | L/h | 0.618 | controller_contract | no |
 | 3999 | 4000 | `requested_working_mode` | read_write | enum | 1 | controller_contract | no |
+| 3275 | 3276 | `defrost_mode` | read_write | enum | 1 | controller_contract | no |
 | 11004 | 11005 | `extended_metadata_11004` | read | raw | 1 | unknown | no |
 | 11005 | 11006 | `extended_metadata_11005` | read | raw | 1 | unknown | no |
 | 11006 | 11007 | `extended_metadata_11006` | read | raw | 1 | unknown | no |
@@ -67,6 +68,10 @@ Modbus addresses below are zero-based. A spreadsheet address is therefore Modbus
 
 | Modbus | Sheet | Name | Access | Profiles | Confidence |
 |---|---|---|---|---|---|
+| 3270..3280 | 3271..3281 | `defrost_base` | read | v1, v1_5, v2_old, v2_new | synthetic |
+| 3307..3315 | 3308..3316 | `defrost_timing` | read | v1, v1_5, v2_old, v2_new | synthetic |
+| 3336..3341 | 3337..3342 | `defrost_coil` | read | v1, v1_5, v2_old, v2_new | synthetic |
+| 3414..3427 | 3415..3428 | `defrost_delta` | read | v1_5, v2_old, v2_new | synthetic |
 | 2999..3510 | 3000..3511 | `eeprom_fixture` | read | v1, v1_5, v2_old, v2_new | unknown |
 | 3000..3021 | 3001..3022 | `base_frequency_table` | read_write | v1, v1_5, v2_old, v2_new | observed |
 | 3050..3069 | 3051..3070 | `v2_frequency_extension` | read_write | v2_new | controller_contract |
