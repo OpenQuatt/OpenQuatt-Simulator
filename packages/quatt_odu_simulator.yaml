@@ -1117,6 +1117,13 @@ button:
       - lambda: id(odu_modbus_hub)->request_uart_framing_fault();
 
   - platform: template
+    name: "Inject M2 UART response sentinel"
+    icon: mdi:format-letter-matches
+    entity_category: config
+    on_press:
+      - lambda: id(odu_modbus_hub)->request_uart_response_sentinel();
+
+  - platform: template
     name: "Inject M2 UART response parity error"
     icon: mdi:alert-outline
     entity_category: config

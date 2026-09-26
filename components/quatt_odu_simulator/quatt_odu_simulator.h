@@ -55,6 +55,7 @@ public:
   void set_uart_fault_injection_enabled(bool enabled);
   void request_uart_parity_fault();
   void request_uart_framing_fault();
+  void request_uart_response_sentinel();
   void request_uart_response_parity_fault();
   uint32_t uart_parity_fault_count() const {
     return this->uart_parity_fault_count_;
@@ -133,6 +134,7 @@ protected:
   uint8_t tx_odu_index_{0xFFU};
   bool uart_fault_injection_enabled_{false};
   UartFaultMode pending_uart_fault_{UartFaultMode::NONE};
+  bool pending_uart_response_sentinel_{false};
   bool pending_uart_response_parity_fault_{false};
   UartFaultMode active_uart_fault_{UartFaultMode::NONE};
   bool uart_fault_active_{false};

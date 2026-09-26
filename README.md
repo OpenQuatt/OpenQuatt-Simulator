@@ -198,6 +198,15 @@ restores even parity and receive mode afterwards. The diagnostics provide the
 injection, rejected-request and restore-error counters. This is M2-only: M1
 requires a second physically connected RS485 path.
 
+For controller-side receive-filter diagnostics, the simulator can instead mark
+the next FC3/FC4 ODU reply. `Inject M2 UART response sentinel` replaces the
+first two data bytes with `A5 5A` and recalculates the Modbus CRC. `Inject M2
+UART response parity error` marks that same reply but transmits it with odd
+parity before restoring `8E1`. Both actions are one-shot, require the existing
+fault-injection switch, are mutually exclusive and never alter a write reply.
+Use controller counters or the log stream as independent evidence; a simulator
+injection count alone does not prove that the controller filtered it.
+
 The diagnostics show request/read/write/drop/exception counts, invalid address
 and write counts, capability violations, highest F-level, last request/write
 and request age. Reset them before each measurement.
