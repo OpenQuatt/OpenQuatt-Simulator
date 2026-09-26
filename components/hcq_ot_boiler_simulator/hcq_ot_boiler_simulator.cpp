@@ -85,6 +85,10 @@ float HCQOTBoilerSimulator::get_relative_modulation() const {
                            : model_.state().relative_modulation_pct;
 }
 
+float HCQOTBoilerSimulator::get_last_ch_start_tset() const {
+  return decode_f88(start_sequence_diagnostics_.last_start_tset_data());
+}
+
 const char *HCQOTBoilerSimulator::get_mode_name() const {
   return hcq::ot_sim::BoilerSimulatorModel::mode_name(model_.state().mode);
 }
@@ -101,6 +105,8 @@ void HCQOTBoilerSimulator::reset_protocol_diagnostics() {
   consecutive_duplicate_request_count_ = 0;
   last_consecutive_duplicate_request_id_ = -1;
   last_request_ms_ = 0;
+  start_sequence_diagnostics_.reset(
+      static_cast<uint64_t>(esp_timer_get_time()));
   response_scheduler_.reset_diagnostics();
   if (opentherm_ != nullptr) {
     opentherm_->resetDiagnostics();
@@ -277,6 +283,9 @@ void HCQOTBoilerSimulator::process_request_(unsigned long request,
   const auto type = opentherm_->getMessageType(request);
   const auto id = opentherm_->getDataID(request);
   const uint16_t data = static_cast<uint16_t>(request);
+  const uint64_t now_us = static_cast<uint64_t>(esp_timer_get_time());
+  const uint32_t rx_age_us = opentherm_->getLastRxFrameAgeUs();
+  const uint64_t request_end_us = rx_age_us <= now_us ? now_us - rx_age_us : now_us;
   last_request_ms_ = now_millis();
   request_count_++;
   if (last_request_id_ == static_cast<int>(id)) {
@@ -284,6 +293,19 @@ void HCQOTBoilerSimulator::process_request_(unsigned long request,
     last_consecutive_duplicate_request_id_ = static_cast<int>(id);
   }
   last_request_id_ = static_cast<int>(id);
+  const auto diagnostic_request_type =
+      type == OpenThermMessageType::READ_DATA
+          ? hcq::ot_sim::OpenThermStartSequenceDiagnostics::RequestType::READ_DATA
+          : type == OpenThermMessageType::WRITE_DATA
+                ? hcq::ot_sim::OpenThermStartSequenceDiagnostics::RequestType::WRITE_DATA
+                : hcq::ot_sim::OpenThermStartSequenceDiagnostics::RequestType::OTHER;
+  const bool ch_enable_rising =
+      id == OpenThermMessageID::Status &&
+      type == OpenThermMessageType::READ_DATA && !master_state_.ch_enable &&
+      (data & (1U << 8)) != 0;
+  start_sequence_diagnostics_.observe_valid_request(
+      static_cast<uint8_t>(id), diagnostic_request_type, data, request_end_us,
+      ch_enable_rising);
   parse_request_(type, id, data);
 
   if (!response_enabled_) {
@@ -292,9 +314,6 @@ void HCQOTBoilerSimulator::process_request_(unsigned long request,
   }
   const unsigned long response = build_response_(type, id, data);
   if (response != 0) {
-    const uint64_t now_us = static_cast<uint64_t>(esp_timer_get_time());
-    const uint32_t rx_age_us = opentherm_->getLastRxFrameAgeUs();
-    const uint64_t request_end_us = rx_age_us <= now_us ? now_us - rx_age_us : now_us;
     response_scheduler_.schedule(static_cast<uint32_t>(response), request_end_us);
   }
 }

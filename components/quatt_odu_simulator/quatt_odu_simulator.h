@@ -55,11 +55,19 @@ public:
   void set_uart_fault_injection_enabled(bool enabled);
   void request_uart_parity_fault();
   void request_uart_framing_fault();
+  void request_uart_response_sentinel();
+  void request_uart_response_parity_fault();
   uint32_t uart_parity_fault_count() const {
     return this->uart_parity_fault_count_;
   }
   uint32_t uart_framing_fault_count() const {
     return this->uart_framing_fault_count_;
+  }
+  uint32_t uart_response_parity_fault_count() const {
+    return this->uart_response_parity_fault_count_;
+  }
+  uint32_t uart_response_parity_fault_retry_count() const {
+    return this->uart_response_parity_fault_retry_count_;
   }
   uint32_t uart_fault_rejected_count() const {
     return this->uart_fault_rejected_count_;
@@ -126,13 +134,28 @@ protected:
   uint8_t tx_odu_index_{0xFFU};
   bool uart_fault_injection_enabled_{false};
   UartFaultMode pending_uart_fault_{UartFaultMode::NONE};
+  bool pending_uart_response_sentinel_{false};
+  bool pending_uart_response_parity_fault_{false};
   UartFaultMode active_uart_fault_{UartFaultMode::NONE};
   bool uart_fault_active_{false};
   uint32_t uart_fault_deadline_ms_{0};
   uint32_t uart_parity_fault_count_{0};
   uint32_t uart_framing_fault_count_{0};
+  uint32_t uart_response_parity_fault_count_{0};
+  uint32_t uart_response_parity_fault_retry_count_{0};
   uint32_t uart_fault_rejected_count_{0};
   uint32_t uart_fault_restore_error_count_{0};
+  bool tx_response_parity_fault_{false};
+  bool tx_response_parity_fault_queued_{false};
+  uint16_t tx_response_parity_fault_offset_{0};
+  uint8_t last_request_address_{0};
+  uint16_t last_request_pdu_size_{0};
+  std::array<uint8_t, modbus::MAX_PDU_SIZE> last_request_pdu_{};
+  bool awaiting_response_parity_fault_retry_{false};
+  uint32_t response_parity_fault_retry_deadline_ms_{0};
+  uint8_t response_parity_fault_retry_address_{0};
+  uint16_t response_parity_fault_retry_pdu_size_{0};
+  std::array<uint8_t, modbus::MAX_PDU_SIZE> response_parity_fault_retry_pdu_{};
 };
 
 class QuattOduSimulator final : public PollingComponent {

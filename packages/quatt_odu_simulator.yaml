@@ -826,6 +826,22 @@ sensor:
     update_interval: 1s
     lambda: return id(odu_modbus_hub)->uart_framing_fault_count();
   - platform: template
+    name: "M2 UART response parity faults injected"
+    icon: mdi:alert-outline
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_modbus_hub)->uart_response_parity_fault_count();
+  - platform: template
+    name: "M2 UART response parity fault retries"
+    icon: mdi:repeat
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_modbus_hub)->uart_response_parity_fault_retry_count();
+  - platform: template
     name: "M2 UART fault injections rejected"
     icon: mdi:alert-outline
     entity_category: diagnostic
@@ -1099,6 +1115,20 @@ button:
     entity_category: config
     on_press:
       - lambda: id(odu_modbus_hub)->request_uart_framing_fault();
+
+  - platform: template
+    name: "Inject M2 UART response sentinel"
+    icon: mdi:format-letter-matches
+    entity_category: config
+    on_press:
+      - lambda: id(odu_modbus_hub)->request_uart_response_sentinel();
+
+  - platform: template
+    name: "Inject M2 UART response parity error"
+    icon: mdi:alert-outline
+    entity_category: config
+    on_press:
+      - lambda: id(odu_modbus_hub)->request_uart_response_parity_fault();
 
   - platform: template
     name: "ODU 1 restore factory tables"

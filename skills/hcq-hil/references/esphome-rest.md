@@ -14,12 +14,18 @@ curl -fsS 'http://192.168.2.63/sensor/M2%20UART%20parity%20faults%20injected'
 curl -fsS 'http://192.168.2.63/sensor/M2%20UART%20framing%20faults%20injected'
 curl -fsS 'http://192.168.2.63/sensor/M2%20UART%20fault%20restore%20errors'
 curl -fsS 'http://192.168.2.63/binary_sensor/M2%20UART%20fault%20injection%20active'
+curl -fsS 'http://192.168.2.63/sensor/M2%20UART%20response%20parity%20faults%20injected'
+curl -fsS 'http://192.168.2.63/sensor/M2%20UART%20response%20parity%20fault%20retries'
 
 # Enable only for a one-shot test, then always disable again.
 curl -fsS -X POST -d '' \
   'http://192.168.2.63/switch/M2%20UART%20fault%20injection%20enabled/turn_on'
 curl -fsS -X POST -d '' \
   'http://192.168.2.63/button/Inject%20M2%20UART%20parity%20error/press'
+curl -fsS -X POST -d '' \
+  'http://192.168.2.63/button/Inject%20M2%20UART%20response%20sentinel/press'
+curl -fsS -X POST -d '' \
+  'http://192.168.2.63/button/Inject%20M2%20UART%20response%20parity%20error/press'
 curl -fsS -X POST -d '' \
   'http://192.168.2.63/switch/M2%20UART%20fault%20injection%20enabled/turn_off'
 ```
@@ -32,6 +38,13 @@ then always turns the switch off through its exit trap.
 The script proves simulator transmission and UART configuration restoration. It
 does not prove an internal controller UART filter without a controller-side
 counter or log signal.
+
+The response-sentinel and response-parity buttons are separate, mutually
+exclusive one-shot diagnostics for the next FC3/FC4 ODU reply. The sentinel
+changes the reply data to `A5 5A` with a valid Modbus CRC; response parity
+changes the UART parity for that reply. Use a controller-side UART counter or a
+bounded logstream capture as the verdict. Do not use either action around a
+Modbus write, and disable injection after the observation.
 
 ## Controlled HIL inputs
 
