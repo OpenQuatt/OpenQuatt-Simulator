@@ -103,13 +103,12 @@ controller exposes independent UART-fault evidence.
   simulator input entities in [the REST reference](references/esphome-rest.md)
   to vary room temperature, room setpoint, `TSet`, boiler telemetry or ODU
   water input. Read the allowed range, set one controlled value, verify the
-  controller outcome and restore the prior value. Do not conflate simulated
+  controller outcome. Do not conflate simulated
   boiler telemetry with a physical PT1000 supply-sensor test.
 - Treat the testcontroller's input-source selection as part of the test state.
   Read the controller source selectors and use its verified `api_input_*` HTTP
   endpoints for controller-side room, outdoor, dew-point, demand and enable
-  scenarios. Verify source selection and freshness after every write, then
-  restore the previous source and input state. The current API-input surface
+  scenarios. Verify source selection and freshness after every write. The current API-input surface
   has no water-supply-temperature input; do not substitute another sensor or
   claim a supply-temperature API test.
 - Check the actual behavior and relevant counters; do not treat a successful
@@ -123,6 +122,13 @@ controller exposes independent UART-fault evidence.
   the final simulator state with the result instead.
 - Still leave an active fault injection disabled: use the fault helper or turn
   its switch off before ending the current run.
+- Do not restore ordinary testcontroller settings, input-source selections or
+  API-input values after a HIL run unless the user or scenario requests it.
+  Each new test uploads its own firmware and establishes its own test state.
+  Firmware uploads can preserve settings, so explicitly set and verify the
+  inputs and selectors needed by each scenario rather than assuming defaults.
+  Record relevant final controller settings with the result; restore a value
+  within a run only when a subsequent assertion needs that baseline.
 - For a normal “test deze PR”-request, run the read-only smoke test directly.
   Ask one concise question only if the relevant test needs OTA/flash, reboot,
   fault injection, a change outside the requested diff, or an action that
