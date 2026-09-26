@@ -102,7 +102,9 @@ curl -fsS 'http://openquatt-test.local/select/Room%20Setpoint%20Source?detail=al
 
 Use `POST -H 'Content-Length: 0'` and follow every write with a GET. Select
 `API input` on the matching controller source before interpreting the control
-result, then restore the prior source and input state after the test. Example:
+result. Leave ordinary source selections and input values in place after the
+test; record them and explicitly establish the next scenario's required state.
+Do not assume that a firmware upload clears persisted settings. Example:
 
 ```sh
 curl -fsS -X POST -H 'Content-Length: 0' \
