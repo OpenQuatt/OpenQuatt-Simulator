@@ -189,5 +189,23 @@ int main() {
   model.update(2.0f);                              // crosses the 5 s boundary
   assert(read(model, 2118U) == 0U);               // defrost bit cleared
   assert(read(model, 2099U) == settled_mode);     // back to heating on its own
+
+  // Bottom-plate heating registers (3236..3238) round-trip and default per variant.
+  model.configure(Profile::V1);
+  assert(read(model, 3236U) == 1U);               // V1 default = mode 1
+  assert(read(model, 3237U) == 34U);              // 4 degC + 30
+  assert(read(model, 3238U) == 3U);
+  assert(model.write_register(3236U, 2U, 200U));
+  assert(model.write_register(3237U, 25U, 201U));  // -5 degC + 30
+  assert(model.write_register(3238U, 7U, 202U));
+  assert(read(model, 3236U) == 2U);
+  assert(read(model, 3237U) == 25U);
+  assert(read(model, 3238U) == 7U);
+  assert(model.write_register(3236U, 3U, 203U));  // mode 3 is a legal register value
+  assert(read(model, 3236U) == 3U);
+  assert(!model.write_register(3236U, 4U, 204U)); // mode > 3 out of range -> rejected
+  assert(!model.write_register(3237U, 61U, 205U)); // out of range -> rejected
+  model.configure(Profile::V1_5);
+  assert(read(model, 3236U) == 3U);               // V1.5 default = mode 3
   return 0;
 }
