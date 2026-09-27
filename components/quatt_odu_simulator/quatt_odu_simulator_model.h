@@ -58,7 +58,7 @@ struct ModelSettings {
   float power_factor{0.92f};
   float demand_limiter{1.0f};
   float maximum_frequency_hz{120.0f};
-  float forced_defrost_duration_s{45.0f};
+  float forced_defrost_duration_s{30.0f};
   bool freeze_measured_frequency{false};
   bool hold_level_during_defrost{true};
   bool experimental_high_frequency_extrapolation{false};
@@ -120,6 +120,9 @@ struct OduState {
   bool defrost{false};               // defrost injected via the ODU defrost switch
   bool forced_defrost{false};        // defrost latched by a 3999=4 write (independent of the switch)
   float forced_defrost_remaining_s{0.0f};
+  uint32_t defrost_started{0};
+  uint32_t defrost_completed{0};
+  uint32_t defrost_aborted{0};
   // Bottom-plate heating (registers 3236..3238): mode, start temperature (raw
   // = degC + 30) and stop delta. Defaults follow the variant: V1 defaults to
   // mode 1, V1.5/V2 to mode 3.
@@ -268,7 +271,8 @@ class QuattOduSimulatorModel {
     if (address == 2006U) return value <= 1U;
     if (address == 2010U) return value == 0U || value == 4096U;
     if (address == 2015U) return value <= 1000U;
-    if (address == 3999U) return value <= 2U || value == 4U;
+    if (address == 3999U) return value <= 2U || (value == 4U &&
+        (this->state_.forced_defrost || this->manual_defrost_ready_()));
     if (address >= 3000U && address <= 3021U) return this->state_.table_write_enabled && value <= 120U;
     if (address >= 3050U && address <= 3069U)
       return this->state_.profile == Profile::V2_NEW && this->state_.table_write_enabled && value <= 120U;
@@ -554,12 +558,14 @@ class QuattOduSimulatorModel {
     diagnostics.write_count++;
     switch (address) {
       case 1999: {
+        const bool forced_stop = value == 0U && this->state_.forced_defrost;
+        if (forced_stop) this->abort_forced_defrost_();
         this->state_.requested_physical_level = value;
         this->state_.protocol.highest_requested_level = std::max<uint8_t>(
             this->state_.protocol.highest_requested_level, static_cast<uint8_t>(std::min<uint16_t>(value, 255U)));
         const uint8_t accepted = static_cast<uint8_t>(std::min<uint16_t>(value, this->maximum_level()));
         if (value > this->maximum_level()) this->state_.protocol.level_capability_violations++;
-        if (this->state_.defrost_active() && this->settings_.hold_level_during_defrost) {
+        if (!forced_stop && this->state_.defrost_active() && this->settings_.hold_level_during_defrost) {
           this->state_.deferred_defrost_level = accepted;
           this->state_.deferred_defrost_level_pending = true;
         } else {
@@ -583,14 +589,15 @@ class QuattOduSimulatorModel {
       case 3999:
         this->state_.protocol.last_3999_value = value;
         if (value == 4U) {
-          // A forced request latches an independent defrost cycle; the injection
-          // switch (set_defrost) must not clear it, and a normal-mode write is
-          // the only other way out. The cycle self-ends after the modelled duration.
-          this->state_.forced_defrost = true;
-          this->state_.forced_defrost_remaining_s = this->settings_.forced_defrost_duration_s;
-          this->state_.protocol.forced_defrost_count++;
+          // Duplicate commands acknowledge the existing cycle without extending it.
+          if (!this->state_.forced_defrost) {
+            this->state_.forced_defrost = true;
+            this->state_.forced_defrost_remaining_s = this->settings_.forced_defrost_duration_s;
+            this->state_.protocol.forced_defrost_count++;
+            this->state_.defrost_started++;
+          }
         } else {
-          this->state_.forced_defrost = false;
+          this->abort_forced_defrost_();
           this->state_.requested_mode = static_cast<WorkingMode>(value);
         }
         diagnostics.accepted_raw = value;
@@ -601,14 +608,36 @@ class QuattOduSimulatorModel {
     }
   }
 
+  bool manual_defrost_ready_() const {
+    return this->enabled() && !this->state_.manual_telemetry.enabled && !this->state_.defrost &&
+        this->state_.requested_mode == WorkingMode::HEATING && this->state_.active_mode == WorkingMode::HEATING &&
+        this->state_.accepted_physical_level > 0U && this->state_.measured_frequency_hz > 0.1f &&
+        this->state_.flow_switch && this->state_.flow_lph >= 250.0f &&
+        std::all_of(this->state_.fault_words.begin(), this->state_.fault_words.end(), [](uint16_t word) { return word == 0U; }) &&
+        std::isfinite(this->settings_.forced_defrost_duration_s) && this->settings_.forced_defrost_duration_s >= 1.0f;
+  }
+
+  void abort_forced_defrost_() {
+    if (!this->state_.forced_defrost) return;
+    this->state_.forced_defrost = false;
+    this->state_.forced_defrost_remaining_s = 0.0f;
+    this->state_.defrost_aborted++;
+    this->update_deferred_defrost_level_();
+  }
+
   // A forced defrost cycle runs for its modelled duration, then releases the
   // ODU back to its requested working mode.
   void update_forced_defrost_(float dt_s) {
     if (!this->state_.forced_defrost) return;
+    if (!this->manual_defrost_ready_()) {
+      this->abort_forced_defrost_();
+      return;
+    }
     this->state_.forced_defrost_remaining_s -= dt_s;
     if (this->state_.forced_defrost_remaining_s > 0.0f) return;
     this->state_.forced_defrost = false;
     this->state_.forced_defrost_remaining_s = 0.0f;
+    this->state_.defrost_completed++;
     this->update_deferred_defrost_level_();
   }
 
@@ -840,7 +869,7 @@ class QuattOduSimulatorModel {
   uint16_t status_2108_() const {
     uint16_t status = 0U;
     if (this->state_.fan_speed_rpm > 0.0f && this->state_.fan_speed_rpm < 400.0f) status |= 0x0001U;
-    if (this->state_.outside_temperature_c < 2.0f) status |= 0x0004U;
+    if (this->state_.outside_temperature_c < 2.0f || this->state_.forced_defrost) status |= 0x0004U;
     if (this->state_.outside_temperature_c < 5.0f) status |= 0x0008U;
     if (this->state_.defrost_active()) status |= 0x0010U;
     if (this->state_.fan_speed_rpm > 700.0f) status |= 0x0020U;

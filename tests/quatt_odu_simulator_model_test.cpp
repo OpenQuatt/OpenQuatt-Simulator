@@ -152,6 +152,10 @@ int main() {
   assert(read(model, 3307U) == 5U);
   assert(read(model, 3336U) == 27U);
   assert(read(model, 3414U) == 18U);
+  assert(model.write_register(1999U, 10U, 62U));
+  assert(model.write_register(3999U, 2U, 62U));
+  assert(model.write_register(2010U, 4096U, 62U));
+  for (int i = 0; i < 40; i++) model.update(0.25f);
   assert(model.write_register(3999U, 4U, 63U));
   assert(read(model, 2099U) == 4U);
   assert(read(model, 2118U) == 1U);
@@ -174,7 +178,8 @@ int main() {
   model.mutable_settings().minimum_runtime_s = 0.0f;
   assert(model.write_register(1999U, 20U, 100U));
   assert(model.write_register(3999U, 2U, 101U));   // request heating
-  model.update(0.5f);
+  assert(model.write_register(2010U, 4096U, 102U));
+  for (int i = 0; i < 40; i++) model.update(0.25f);
   const uint16_t settled_mode = read(model, 2099U);
   assert(settled_mode == 2U);
   assert(model.write_register(3999U, 4U, 110U));   // force defrost

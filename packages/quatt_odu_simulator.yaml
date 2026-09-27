@@ -323,10 +323,10 @@ number:
     entity_category: config
     optimistic: true
     unit_of_measurement: "s"
-    min_value: 0
+    min_value: 1
     max_value: 600
     step: 1
-    initial_value: "45"
+    initial_value: "30"
 
   - platform: template
     id: odu_2_forced_defrost_duration_s
@@ -334,10 +334,10 @@ number:
     entity_category: config
     optimistic: true
     unit_of_measurement: "s"
-    min_value: 0
+    min_value: 1
     max_value: 600
     step: 1
-    initial_value: "45"
+    initial_value: "30"
 
   - platform: template
     id: odu_1_pending_address
@@ -1003,6 +1003,38 @@ sensor:
     lambda: return id(odu_simulator)->model(1).state().protocol.legacy_extension_read_violations;
 
 text_sensor:
+  - platform: template
+    name: "ODU Defrost Contract"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: return {"manual-defrost-v1"};
+
+  - platform: template
+    name: "ODU 1 defrost diagnostics"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const auto &s = id(odu_simulator)->model(0).state();
+      char text[128];
+      snprintf(text, sizeof(text), "started=%lu completed=%lu aborted=%lu",
+               static_cast<unsigned long>(s.defrost_started),
+               static_cast<unsigned long>(s.defrost_completed),
+               static_cast<unsigned long>(s.defrost_aborted));
+      return {text};
+
+  - platform: template
+    name: "ODU 2 defrost diagnostics"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      const auto &s = id(odu_simulator)->model(1).state();
+      char text[128];
+      snprintf(text, sizeof(text), "started=%lu completed=%lu aborted=%lu",
+               static_cast<unsigned long>(s.defrost_started),
+               static_cast<unsigned long>(s.defrost_completed),
+               static_cast<unsigned long>(s.defrost_aborted));
+      return {text};
+
   - platform: template
     name: "ODU 1 diagnostics"
     entity_category: diagnostic
