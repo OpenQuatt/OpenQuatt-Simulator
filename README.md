@@ -9,7 +9,7 @@ can simultaneously simulate:
   Modbus addresses 1 and 2.
 
 The combined firmware publishes compatibility contract
-`openquatt-modbus-opentherm-v2` and simulator version `v0.4.1`. HIL clients
+`openquatt-modbus-opentherm-v2` and simulator version `v0.5.0`. HIL clients
 must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
@@ -164,6 +164,24 @@ raw readbacks for `2099`, `2100`, `2101`, `2103`, `2105`, `2108`, `2133`,
 `2134`, `2137` and `2138`; it does not alter dynamic state or the independent
 defrost register `2118`.
 
+
+The installed `ODU Defrost Contract=manual-defrost-v1` marker identifies the
+accelerated manual-cycle fixture. A `3999=4` write requires actual simulated
+heating, nonzero compressor feedback, flow switch and at least 250 l/h, no fault
+words, no injected defrost and no manual telemetry override. Duplicate commands
+acknowledge the same cycle without resetting its timer or increasing `started`.
+The default duration is 30 seconds (configurable 1..600 seconds), independent of
+synthetic P279. During the cycle, `2099=4`, `2118=1`, and `2108` defrost,
+four-way cooling and bottom-plate heater bits are asserted. Completion returns
+to heating; ambient heater control can keep the heater on below 2 °C.
+
+`ODU 1 defrost diagnostics` and `ODU 2 defrost diagnostics` publish
+`started=N completed=N aborted=N`. These counters survive the generic diagnostic
+reset and reset only on boot or model/profile reconfiguration. Normal-mode writes,
+`1999=0`, or loss of heating/flow/fault-free prerequisites abort the manual cycle;
+compressor stop still follows the ordinary ramp/runtime model. Defrost method and
+parameter blocks remain synthetic controller fixtures. This does not validate
+real ODU automatic defrost thresholds or physical cycle timing.
 
 Defrost can be injected per ODU. The defrost register and status bit are set,
 water-out temporarily falls, and `Hold physical level during defrost` controls
