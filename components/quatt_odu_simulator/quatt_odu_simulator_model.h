@@ -843,15 +843,15 @@ class QuattOduSimulatorModel {
     // A finite water volume prevents P/flow from diverging during a pump stop.
     // Calibrate the existing response time at the default 800 L/h operating point;
     // this is a simulator calibration, not a measured ODU water volume.
-    const float capacity_j_per_k = 4180.0f * (800.0f / 3600.0f) * this->settings_.water_response_tau_s;
+    const double capacity_j_per_k = 4180.0 * (800.0 / 3600.0) * this->settings_.water_response_tau_s;
     if (std::isfinite(capacity_j_per_k) && capacity_j_per_k > 0.0f) {
-      const float conductance_w_per_k = 4180.0f * (this->state_.flow_lph / 3600.0f);
+      const double conductance_w_per_k = 4180.0 * (this->state_.flow_lph / 3600.0);
       const float sign = this->state_.active_mode == WorkingMode::COOLING ? -1.0f : 1.0f;
       float heat_w = sign * this->state_.thermal_power_w;
       if (this->state_.defrost_active() && this->state_.thermal_power_w > 0.0f)
         heat_w -= 4.0f * conductance_w_per_k;
-      const float a = conductance_w_per_k * dt_s / capacity_j_per_k;
-      const float alpha = -std::expm1(-a);
+      const double a = conductance_w_per_k * dt_s / capacity_j_per_k;
+      const double alpha = -std::expm1(-a);
       this->state_.water_out_temperature_c +=
           (this->state_.water_in_temperature_c - this->state_.water_out_temperature_c) * alpha +
           heat_w * dt_s / capacity_j_per_k * (a > 0.0f ? alpha / a : 1.0f);
