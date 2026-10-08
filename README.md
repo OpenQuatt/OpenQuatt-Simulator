@@ -142,8 +142,15 @@ the profile capability are recorded and capped before a frequency is chosen.
 Mode changes ramp the compressor to zero before restarting in the other mode.
 
 Pump writes control a settling flow model and the flowswitch. `2138` uses the
-OpenQuatt conversion `round(flow_lph / 0.618)`. Water-out temperature follows
-the simulated thermal power and mass flow through a first-order response.
+OpenQuatt conversion `round(flow_lph / 0.618)`. Water-out temperature follows a
+finite water heat capacity and the heat carried away by the flow. The existing
+four-second response setting defines that capacity at 800 l/h; it is a simulator
+parameter, not a measured ODU water volume. At zero flow, remaining compressor
+power heats the trapped water at a finite rate instead of dividing by nearly
+zero flow. After the compressor stops, trapped water retains its heat until flow
+resumes; heat loss to the surroundings is not modelled. With steady flow, the
+final temperature difference still corresponds to thermal power divided by
+water mass flow and specific heat capacity.
 `ODU external system pump flow` applies the configured iPWM flow without
 requiring ODU pump-relay register `2010`; use it when the controller drives a
 separate system pump. Water-in can be set from 0.0 to 60.0 °C in 0.1 °C steps.

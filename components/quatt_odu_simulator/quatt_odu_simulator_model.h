@@ -840,15 +840,22 @@ class QuattOduSimulatorModel {
     this->state_.ac_current_a =
         this->state_.electrical_power_w / std::max(1.0f, this->state_.ac_voltage_v * this->settings_.power_factor);
 
-    float target_out = this->state_.water_in_temperature_c;
-    if (this->state_.flow_lph > 1.0f && this->state_.thermal_power_w > 0.0f) {
-      const float delta = this->state_.thermal_power_w / ((this->state_.flow_lph / 3600.0f) * 4180.0f);
+    // A finite water volume prevents P/flow from diverging during a pump stop.
+    // Calibrate the existing response time at the default 800 L/h operating point;
+    // this is a simulator calibration, not a measured ODU water volume.
+    const double capacity_j_per_k = 4180.0 * (800.0 / 3600.0) * this->settings_.water_response_tau_s;
+    if (std::isfinite(capacity_j_per_k) && capacity_j_per_k > 0.0f) {
+      const double conductance_w_per_k = 4180.0 * (this->state_.flow_lph / 3600.0);
       const float sign = this->state_.active_mode == WorkingMode::COOLING ? -1.0f : 1.0f;
-      target_out += sign * delta;
-      if (this->state_.defrost_active()) target_out -= 4.0f;
+      float heat_w = sign * this->state_.thermal_power_w;
+      if (this->state_.defrost_active() && this->state_.thermal_power_w > 0.0f)
+        heat_w -= 4.0f * conductance_w_per_k;
+      const double a = conductance_w_per_k * dt_s / capacity_j_per_k;
+      const double alpha = -std::expm1(-a);
+      this->state_.water_out_temperature_c +=
+          (this->state_.water_in_temperature_c - this->state_.water_out_temperature_c) * alpha +
+          heat_w * dt_s / capacity_j_per_k * (a > 0.0f ? alpha / a : 1.0f);
     }
-    this->state_.water_out_temperature_c += (target_out - this->state_.water_out_temperature_c) *
-                                            std::clamp(dt_s / this->settings_.water_response_tau_s, 0.0f, 1.0f);
     this->state_.condensing_temperature_c =
         this->state_.water_out_temperature_c + 5.0f + this->state_.measured_frequency_hz * 0.03f;
     this->state_.evaporating_temperature_c =
