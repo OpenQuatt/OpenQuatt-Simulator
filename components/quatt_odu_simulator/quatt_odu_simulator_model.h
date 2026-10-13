@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include "quatt_odu_heating_limits.h"
 #include "quatt_odu_performance.generated.h"
 #include "quatt_odu_profiles.generated.h"
 #include "quatt_odu_registers.generated.h"
@@ -62,6 +63,7 @@ struct ModelSettings {
   bool freeze_measured_frequency{false};
   bool hold_level_during_defrost{true};
   bool experimental_high_frequency_extrapolation{false};
+  bool heating_limits_enabled{false};
 };
 
 struct ManualTelemetry {
@@ -91,6 +93,12 @@ struct OduState {
   uint16_t pump_ipwm{0};
   uint16_t pump_feedback_override{0xFFFFU};
   float target_frequency_hz{0.0f};
+  float requested_table_frequency_hz{0.0f};
+  float driver_frequency_hz{0.0f};
+  uint8_t prepared_physical_level{0U};
+  uint8_t heating_limit_reasons{HEATING_LIMIT_NONE};
+  bool heating_limits_active{false};
+  bool high_levels_released{false};
   float measured_frequency_hz{0.0f};
   float outside_temperature_c{7.0f};
   float water_in_temperature_c{30.0f};
@@ -174,12 +182,16 @@ class QuattOduSimulatorModel {
 
   void configure(Profile profile) {
     this->state_ = {};
+    this->heating_limits_.reset();
     this->state_.profile = profile;
     const auto& definition = profile_definition(profile);
     this->state_.cooling_table = definition.factory_cooling;
     this->state_.heating_table = definition.factory_heating;
     // Bottom-plate default per generation: V1 uses mode 1, V1.5/V2 mode 3.
     this->state_.bottom_plate_mode = profile == Profile::V1 ? 1U : 3U;
+    this->state_.defrost_mode = definition.defrost_mode;
+    this->state_.defrost_base[0] = definition.defrost_start_interval_raw;
+    this->state_.defrost_base[5] = definition.defrost_mode;
   }
 
   bool enabled() const { return profile_definition(this->state_.profile).enabled; }
@@ -809,14 +821,40 @@ class QuattOduSimulatorModel {
     }
 
     float target = 0.0f;
+    this->state_.requested_table_frequency_hz = 0.0f;
+    if (demand && this->runtime_table_valid(this->state_.requested_mode)) {
+      const auto& requested_table = this->state_.requested_mode == WorkingMode::COOLING
+                                        ? this->state_.cooling_table : this->state_.heating_table;
+      this->state_.requested_table_frequency_hz = requested_table[this->state_.accepted_physical_level];
+    }
+    this->state_.prepared_physical_level = 0U;
+    this->state_.heating_limit_reasons = HEATING_LIMIT_NONE;
+    this->state_.heating_limits_active =
+        this->settings_.heating_limits_enabled && this->state_.profile == Profile::V2_NEW &&
+        this->state_.active_mode == WorkingMode::HEATING && this->state_.requested_mode == WorkingMode::HEATING &&
+        demand && this->runtime_table_valid(WorkingMode::HEATING) && !this->state_.defrost_active();
+    if (!this->state_.heating_limits_active) this->heating_limits_.reset();
     if (this->state_.active_mode != WorkingMode::STANDBY && this->state_.active_mode == this->state_.requested_mode &&
         demand && this->runtime_table_valid(this->state_.active_mode)) {
       const auto& table =
           this->state_.active_mode == WorkingMode::COOLING ? this->state_.cooling_table : this->state_.heating_table;
-      target = table[this->state_.accepted_physical_level] * this->settings_.demand_limiter;
-      target = std::min(target, this->settings_.maximum_frequency_hz);
+      uint8_t level = this->state_.accepted_physical_level;
+      if (this->state_.heating_limits_active) {
+        const auto limited = this->heating_limits_.apply(level, this->state_.outside_temperature_c,
+                                                       this->state_.water_in_temperature_c, this->state_.silent_mode);
+        level = limited.physical_level;
+        this->state_.heating_limit_reasons = limited.reasons;
+      }
+      this->state_.prepared_physical_level = level;
+      target = table[level];
     }
+    this->state_.high_levels_released = this->heating_limits_.high_levels_released();
     this->state_.target_frequency_hz = target;
+    // In the heating-limit preset, lab derating is downstream of the prepared
+    // request exposed in 2102. Retain legacy readback semantics elsewhere.
+    target = std::min(target * this->settings_.demand_limiter, this->settings_.maximum_frequency_hz);
+    this->state_.driver_frequency_hz = target;
+    if (!this->state_.heating_limits_active) this->state_.target_frequency_hz = target;
     if (!this->settings_.freeze_measured_frequency) {
       const float rate =
           target >= this->state_.measured_frequency_hz ? this->settings_.ramp_up_hz_s : this->settings_.ramp_down_hz_s;
@@ -876,7 +914,9 @@ class QuattOduSimulatorModel {
   uint16_t status_2108_() const {
     uint16_t status = 0U;
     if (this->state_.fan_speed_rpm > 0.0f && this->state_.fan_speed_rpm < 400.0f) status |= 0x0001U;
-    if (this->state_.outside_temperature_c < 2.0f || this->state_.forced_defrost) status |= 0x0004U;
+    if (this->state_.bottom_plate_mode != 0U &&
+        (this->state_.outside_temperature_c < 2.0f || this->state_.forced_defrost))
+      status |= 0x0004U;
     if (this->state_.outside_temperature_c < 5.0f) status |= 0x0008U;
     if (this->state_.defrost_active()) status |= 0x0010U;
     if (this->state_.fan_speed_rpm > 700.0f) status |= 0x0020U;
@@ -934,6 +974,7 @@ class QuattOduSimulatorModel {
 
   OduState state_{};
   ModelSettings settings_{};
+  HeatingLimits heating_limits_{};
 };
 
 }  // namespace esphome::quatt_odu_simulator

@@ -9,7 +9,7 @@ can simultaneously simulate:
   Modbus addresses 1 and 2.
 
 The combined firmware publishes compatibility contract
-`openquatt-modbus-opentherm-v2` and simulator version `v0.5.0`. HIL clients
+`openquatt-modbus-opentherm-v2` and simulator version `v0.6.0`. HIL clients
 must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
@@ -140,6 +140,24 @@ pump, flow, temperatures, pressures, fan/EEV state, power, faults and
 diagnostics. Heating and cooling select separate tables. Requested levels above
 the profile capability are recorded and capped before a frequency is chosen.
 Mode changes ramp the compressor to zero before restarting in the other mode.
+
+`ODU 1/2 heating limits enabled` opts each ODU into a bounded V2 new
+normal-heating preset for outside-temperature limits, inlet-temperature release
+of the highest levels, and quiet mode. The switches start off after boot.
+The preset limits physical levels before looking up the current RAM table;
+V1, V1.5, V2 old, cooling and defrost retain the contract model. Diagnostics
+separate the requested table frequency, prepared demand, driver command and
+measured frequency and report all applicable heating-limit reasons. See the
+[tester guide](docs/tester-handleiding.md#optionele-verwarmingsbegrenzing-v2-new)
+for examples and hysteresis/reset behavior. Compressor ramp rates remain lab
+settings; this preset does not model all start conditions or protections.
+
+Selected defrost readback defaults are profile-specific: method 0 for V1/V1.5,
+method 4 for V2 old/V2 new, and start interval raw 0 for V1 or 45 for the other
+profiles. They do not enable autonomous defrost. Bottom-plate mode 0 clears
+the model's heater status bit; modes 1..3 still use the existing synthetic
+outside-temperature/forced-defrost rule. Heater power and full heater timing
+are not modelled. Manual raw status overrides remain available.
 
 Pump writes control a settling flow model and the flowswitch. `2138` uses the
 OpenQuatt conversion `round(flow_lph / 0.618)`. Water-out temperature follows a

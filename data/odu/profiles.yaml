@@ -16,6 +16,8 @@ profiles:
     customer_model_words: [0x0000, 0x0000]
     factory_cooling: [0]
     factory_heating: [0]
+    defrost_mode: 0
+    defrost_start_interval_raw: 0
     confidence: synthetic
 
   - id: v1
@@ -29,6 +31,8 @@ profiles:
     customer_model_words: [0x0000, 0x0000]
     factory_cooling: [0, 30, 36, 42, 47, 52, 56, 61, 66, 71, 74]
     factory_heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
+    defrost_mode: 0
+    defrost_start_interval_raw: 0
     confidence: observed
 
   - id: v1_5
@@ -42,6 +46,8 @@ profiles:
     customer_model_words: [0x0000, 0x0000]
     factory_cooling: [0, 30, 36, 42, 47, 52, 56, 61, 66, 71, 74]
     factory_heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
+    defrost_mode: 0
+    defrost_start_interval_raw: 45
     confidence: observed
 
   - id: v2_old
@@ -55,6 +61,8 @@ profiles:
     customer_model_words: [0x414D, 0x4836]
     factory_cooling: [0, 30, 36, 42, 46, 48, 52, 56, 61, 66, 71]
     factory_heating: [0, 20, 26, 30, 48, 55, 61, 72, 80, 85, 90]
+    defrost_mode: 4
+    defrost_start_interval_raw: 45
     confidence: observed
 
   - id: v2_new
@@ -68,6 +76,8 @@ profiles:
     customer_model_words: [0x414D, 0x4836]
     factory_cooling: [0, 20, 26, 30, 34, 36, 38, 40, 42, 44, 46, 48, 52, 54, 56, 58, 60, 64, 66, 68, 71]
     factory_heating: [0, 20, 26, 30, 36, 40, 45, 48, 52, 55, 60, 65, 68, 72, 76, 82, 85, 90, 95, 102, 110]
+    defrost_mode: 4
+    defrost_start_interval_raw: 45
     confidence: controller_contract
 
 presets:

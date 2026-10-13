@@ -88,6 +88,12 @@ def validate(registers: dict, profiles: dict, performance: dict) -> None:
             raise ValueError(f"unexpected writable exact register {item['address']}")
 
     for profile in profiles["profiles"]:
+        allowed_modes = (0, 1, 3) if profile["id"] in ("disabled", "v1") else (0, 1, 3, 4)
+        if profile["defrost_mode"] not in allowed_modes:
+            raise ValueError(f"invalid {profile['id']} defrost mode")
+        if (not isinstance(profile["defrost_start_interval_raw"], int)
+                or not 0 <= profile["defrost_start_interval_raw"] <= 65535):
+            raise ValueError(f"invalid {profile['id']} defrost start interval")
         if profile["id"] == "disabled":
             continue
         expected = profile["max_physical_level"] + 1
@@ -135,7 +141,7 @@ def generate_profiles(profiles: dict) -> str:
         heating = ", ".join(str(value) for value in padded(profile["factory_heating"]))
         customer = ", ".join(f"0x{value:04X}U" for value in profile["customer_model_words"])
         rows.append(
-            "    {Profile::%s, \"%s\", %s, %dU, %dU, 0x%04XU, 0x%04XU, {%s}, {%s}, {%s}},"
+            "    {Profile::%s, \"%s\", %s, %dU, %dU, 0x%04XU, 0x%04XU, {%s}, {%s}, {%s}, %dU, %dU},"
             % (
                 CPP_PROFILE[profile["id"]],
                 cpp_string(profile["label"]),
@@ -147,6 +153,8 @@ def generate_profiles(profiles: dict) -> str:
                 customer,
                 cooling,
                 heating,
+                profile["defrost_mode"],
+                profile["defrost_start_interval_raw"],
             )
         )
 
@@ -191,6 +199,8 @@ struct ProfileDefinition {{
   std::array<uint16_t, 2> customer_model_words;
   std::array<uint8_t, 21> factory_cooling;
   std::array<uint8_t, 21> factory_heating;
+  uint16_t defrost_mode;
+  uint16_t defrost_start_interval_raw;
 }};
 
 struct RuntimePresetDefinition {{
@@ -418,6 +428,16 @@ def generate_docs(registers: dict, profiles: dict, performance: dict) -> str:
             f"| {profile['label']} | `{profile['compressor_code']}` | `0x{profile['pcb_program']:04X}` | "
             f"`0x{profile['control_board_item']:04X}` | {customer} | F0..F{profile['max_physical_level']} |"
         )
+    lines.extend(
+        [
+            "", "## Defrost profile defaults", "",
+            "These selected readback defaults do not enable autonomous defrost. Other defrost values remain synthetic.",
+            "", "| Profile | Method | Start interval (raw) |", "|---|---:|---:|",
+        ]
+    )
+    for profile in profiles["profiles"]:
+        if profile["enabled"]:
+            lines.append(f"| {profile['label']} | {profile['defrost_mode']} | {profile['defrost_start_interval_raw']} |")
     lines.extend(
         [
             "",

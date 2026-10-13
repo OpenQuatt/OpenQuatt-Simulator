@@ -216,6 +216,20 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
 
   - platform: template
+    id: odu_1_heating_limits_enabled
+    name: "ODU 1 heating limits enabled"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: odu_2_heating_limits_enabled
+    name: "ODU 2 heating limits enabled"
+    entity_category: config
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
     id: odu_2_table_write_enabled
     name: "ODU 2 runtime-table writes"
     entity_category: config
@@ -293,6 +307,30 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
 
 binary_sensor:
+  - platform: template
+    name: "ODU 1 quiet mode requested"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(0).state().silent_mode;
+  - platform: template
+    name: "ODU 2 quiet mode requested"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(1).state().silent_mode;
+  - platform: template
+    name: "ODU 1 heating limits active"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(0).state().heating_limits_active;
+  - platform: template
+    name: "ODU 2 heating limits active"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(1).state().heating_limits_active;
+  - platform: template
+    name: "ODU 1 high levels released"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(0).state().high_levels_released;
+  - platform: template
+    name: "ODU 2 high levels released"
+    entity_category: diagnostic
+    lambda: return id(odu_simulator)->model(1).state().high_levels_released;
   - platform: template
     name: "M2 UART fault injection active"
     entity_category: diagnostic
@@ -456,8 +494,8 @@ number:
     optimistic: true
     restore_value: true
     initial_value: 7
-    min_value: -25
-    max_value: 45
+    min_value: -30
+    max_value: 50
     step: 0.5
 
   - platform: template
@@ -468,8 +506,8 @@ number:
     optimistic: true
     restore_value: true
     initial_value: 7
-    min_value: -25
-    max_value: 45
+    min_value: -30
+    max_value: 50
     step: 0.5
 
   - platform: template
@@ -810,6 +848,46 @@ number:
 
 sensor:
   - platform: template
+    name: "ODU 1 requested table frequency"
+    unit_of_measurement: Hz
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().requested_table_frequency_hz;
+  - platform: template
+    name: "ODU 2 requested table frequency"
+    unit_of_measurement: Hz
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().requested_table_frequency_hz;
+  - platform: template
+    name: "ODU 1 prepared physical level"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().prepared_physical_level;
+  - platform: template
+    name: "ODU 2 prepared physical level"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().prepared_physical_level;
+  - platform: template
+    name: "ODU 1 driver frequency"
+    unit_of_measurement: Hz
+    entity_category: diagnostic
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(0).state().driver_frequency_hz;
+  - platform: template
+    name: "ODU 2 driver frequency"
+    unit_of_measurement: Hz
+    entity_category: diagnostic
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: return id(odu_simulator)->model(1).state().driver_frequency_hz;
+  - platform: template
     name: "M2 UART parity faults injected"
     icon: mdi:alert-outline
     entity_category: diagnostic
@@ -1003,6 +1081,20 @@ sensor:
     lambda: return id(odu_simulator)->model(1).state().protocol.legacy_extension_read_violations;
 
 text_sensor:
+  - platform: template
+    name: "ODU 1 heating limit reasons"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return {esphome::quatt_odu_simulator::heating_limit_reason_text(
+          id(odu_simulator)->model(0).state().heating_limit_reasons)};
+  - platform: template
+    name: "ODU 2 heating limit reasons"
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return {esphome::quatt_odu_simulator::heating_limit_reason_text(
+          id(odu_simulator)->model(1).state().heating_limit_reasons)};
   - platform: template
     name: "ODU Defrost Contract"
     entity_category: diagnostic
@@ -1227,6 +1319,8 @@ interval:
               id(odu_external_system_pump_flow).state;
           simulator.set_freeze_frequency(0, id(odu_1_freeze_frequency).state);
           simulator.set_freeze_frequency(1, id(odu_2_freeze_frequency).state);
+          simulator.model(0).mutable_settings().heating_limits_enabled = id(odu_1_heating_limits_enabled).state;
+          simulator.model(1).mutable_settings().heating_limits_enabled = id(odu_2_heating_limits_enabled).state;
            simulator.set_hold_level_during_defrost(0, id(odu_1_hold_level_during_defrost).state);
            simulator.set_hold_level_during_defrost(1, id(odu_2_hold_level_during_defrost).state);
            simulator.set_forced_defrost_duration_s(0, id(odu_1_forced_defrost_duration_s).state);

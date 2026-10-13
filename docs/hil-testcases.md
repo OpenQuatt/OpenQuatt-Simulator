@@ -71,6 +71,43 @@ foutinspuiting en het herstel bewezen, maar niet de interne controllerfilter.
 **Herstel:** injectieswitch uit; beide ODU-profielen actief; geen lopende
 injectie.
 
+## ODU-HEAT-001 — Verwarmingsbegrenzing V2 new (nog op hardware te valideren)
+
+**Doel:** de controller verwerkt een geldige ODU-aanvraag waarvan de uitvoering
+door temperatuur of stilte wordt begrensd. Dit is een geplande HIL-test;
+hosttests bewijzen geen gedrag op de fysieke opstelling.
+
+**Beginstaat:** baseline, ODU 1 V2 new, geen defrost of handmatige telemetrie,
+normale responses en standaardfrequentietabel. Controleer simulator v0.6.0
+of hoger en noteer controllerversie, profielen en temperaturen.
+
+**Mutaties en observaties:**
+
+1. Schakel `ODU 1 heating limits enabled` in. Vraag via de controller
+   normaal verwarmen aan met een fysieke stand boven F14. Houd de ingestelde
+   aanvraag zichtbaar; de automatische controller kan een lagere stand kiezen.
+2. Stel buiten 7 °C en waterinlaat 30 °C in. Controleer binnen 30 seconden
+   actieve limieten, de ontvangen stand, een voorbereide stand ≤ F14,
+   vraag ≤ 76 Hz en de reden `outside temperature`. Meetfrequentie volgt de
+   ingestelde ramp. Een lagere controlleraanvraag hoeft niet begrensd te worden.
+3. Stel buiten -10 °C en waterinlaat 33 °C in. Controleer vrijgave van de
+   hoogste standen. Een handmatig aangevraagde F20 geeft 110 Hz met stilte uit;
+   een controller met een eigen 90Hz-grens hoeft F20 niet aan te vragen.
+4. Laat de controller stille mode aanvragen. Controleer de ontvangen
+   `quiet mode requested`-vlag en bij een aanvraag > F14 het F14-plafond met
+   reden `quiet mode`. Gebruik de actuele tabel voor het verwachte Hz-doel.
+5. Herhaal met ODU 2, zonder de ODU-1-switch te wijzigen, en controleer dat
+   limietinstelling en hysterese per ODU onafhankelijk zijn.
+
+**Pass:** readbacks en simulatorredenen passen bij aanvraag, tabel en
+temperaturen; geen protocolfouten. Leg de controllerreactie op lagere
+gemeten Hz afzonderlijk vast, inclusief eventuele regel- of stopbeslissing.
+Vervang de controlleracceptatiecriteria niet door alleen simulatoruitvoer.
+
+**Herstel:** beide limietswitches uit, stille mode via de controller herstellen,
+profielen, tabellen en temperaturen naar baseline. Bewaar ontvangen standen,
+vraag, driverdoel, gemeten Hz, redenen, protocolcounters en controllerreactie.
+
 ## Nieuwe testcase toevoegen
 
 Gebruik: identifier, doel, beginstaat, expliciet gemarkeerde mutaties,
