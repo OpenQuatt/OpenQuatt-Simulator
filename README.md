@@ -9,7 +9,7 @@ can simultaneously simulate:
   Modbus addresses 1 and 2.
 
 The combined firmware publishes compatibility contract
-`openquatt-modbus-opentherm-v2` and simulator version `v0.5.0`. HIL clients
+`openquatt-modbus-opentherm-v2` and simulator version `v0.6.0`. HIL clients
 must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
@@ -141,6 +141,24 @@ diagnostics. Heating and cooling select separate tables. Requested levels above
 the profile capability are recorded and capped before a frequency is chosen.
 Mode changes ramp the compressor to zero before restarting in the other mode.
 
+`ODU 1/2 heating limits enabled` opts each ODU into a bounded V2 new
+normal-heating preset for outside-temperature limits, inlet-temperature release
+of the highest levels, and quiet mode. The switches start off after boot.
+The preset limits physical levels before looking up the current RAM table;
+V1, V1.5, V2 old, cooling and defrost retain the contract model. Diagnostics
+separate the requested table frequency, prepared demand, driver command and
+measured frequency and report all applicable heating-limit reasons. See the
+[tester guide](docs/tester-handleiding.md#optionele-verwarmingsbegrenzing-v2-new)
+for examples and hysteresis/reset behavior. Compressor ramp rates remain lab
+settings; this preset does not model all start conditions or protections.
+
+Selected defrost readback defaults are profile-specific: method 0 for V1/V1.5,
+method 4 for V2 old/V2 new, and start interval raw 0 for V1 or 45 for the other
+profiles. They do not enable autonomous defrost. Bottom-plate mode 0 clears
+the model's heater status bit; modes 1..3 still use the existing synthetic
+outside-temperature/forced-defrost rule. Heater power and full heater timing
+are not modelled. Manual raw status overrides remain available.
+
 Pump writes control a settling flow model and the flowswitch. `2138` uses the
 OpenQuatt conversion `round(flow_lph / 0.618)`. Water-out temperature follows a
 finite water heat capacity and the heat carried away by the flow. The existing
@@ -240,6 +258,66 @@ Malformed protocol injection intentionally produces frames a normal Modbus
 client should reject. Disable all injections before interpreting normal timing
 or functional results.
 
+## HTTP and runtime diagnostics
+
+The combined simulator publishes internal free heap, minimum-since-boot heap,
+largest internal free block and the loop/HTTPD task stack high-watermarks in bytes.
+An unavailable HTTPD task reports an unknown value rather than a zero margin.
+Free PSRAM and its largest block are separate measurements; spare PSRAM does
+not establish that Wi-Fi/TCP allocations have enough internal memory.
+
+`Simulator internal heap fragmentation` is `100 * (1 - largest / free)` for
+internal 8-bit memory. `Simulator maximum loop time` is the maximum loop gap
+in each 10-second window, excluding the first window that includes setup.
+Uptime and reset reason distinguish a reboot from a temporary HTTP outage;
+WiFi signal and a disconnect counter help distinguish link loss. Disconnects
+reset at boot and count ESPHome disconnect notifications, not failed HTTP
+requests. Added diagnostics publish every 10 seconds.
+
+The combined image uses INFO logging and disables web log streaming to reduce
+duplicate log/state SSE traffic. State events, REST, serial and native API
+logging remain available. Model and protocol update intervals are unchanged.
+The 37 ODU sensor/text readouts publish every five seconds to reduce steady
+SSE traffic; model updates remain at 250 ms and configuration sync at 500 ms.
+The boiler-only image keeps its existing logging settings.
+The USB-powered combined image disables WiFi power saving for sustained
+HTTP/SSE traffic on the weak lab link; the standalone boiler keeps its WiFi
+settings. This does not increase signal strength or guarantee RF coverage.
+
+The combined image reserves at least 8192 bytes for the native HTTPD task,
+using a linker wrapper around `httpd_start`. Its original 4352-byte stack had
+only 128 bytes left during entity-detail GETs alongside SSE in HIL. This costs
+3840 additional bytes of internal RAM with ESPHome 2026.8.0. Larger upstream
+stacks, native allocation capabilities and start-failure behavior are preserved.
+This addresses the measured stack margin; a stack overflow has not yet been
+proven as the cause of the earlier intermittent panic.
+
+The combined image also selects a local ESPHome 2026.8.0
+[SSE lifecycle backport](components/web_server_idf/README.md) of ESPHome #17800.
+Stalled streams close through their owning HTTPD task; queued close work keeps
+the response alive and checks session identity before shutdown. The standalone
+boiler image uses the unmodified upstream component. See the
+[physical HIL and crash investigation](docs/hil-pr9-2026-10-15.md) for measured
+results and remaining limits.
+
+For a bounded, read-only comparison with one SSE client and one HTTP GET every
+two seconds (plus response time), use:
+
+```bash
+python3 scripts/probe_http.py --url http://SIMULATOR-IP --duration 120 --output build/http-probe.json
+```
+
+Use repeated `--path` arguments to replay specific GETs, for example
+`--path '/number/ODU%201%20outside%20temperature?detail=all'`. Paths are relative
+to the explicit lab URL; the probe sends no POST requests.
+
+Run identical baseline/candidate loads with the same ODU profiles and controller
+polling. Record HTTP errors/latencies, SSE traffic and memory trends. An early
+SSE disconnect is an error, even if root HTTP requests still succeed. A clean
+short run does not prove the intermittent outage fixed or establish a memory
+safety budget. Capture serial logs during an outage to retain evidence when
+HTTP and SSE both become unavailable.
+
 ## OpenTherm start-sequence diagnostics
 
 The boiler simulator records every valid CH-enable rising edge and whether it
@@ -304,6 +382,17 @@ c++ -std=c++17 -Wall -Wextra -Werror tests/quatt_odu_simulator_model_test.cpp -o
 c++ -std=c++17 -Wall -Wextra -Werror tests/quatt_odu_performance_model_test.cpp -o /tmp/odu_performance_test
 /tmp/odu_performance_test
 ```
+
+The SSE lifecycle failure-injection test compiles actual production method
+bodies against deterministic HTTPD/clock stubs, including delayed callbacks,
+socket reuse, partial sends, queue failures and HTTPD stack allocation failures:
+
+```sh
+python3 tests/web_server_idf_lifecycle_test.py
+```
+
+Set `CXX` when a different C++17 compiler is required. This test does not
+replace real scheduler, networking or HIL validation.
 
 CI also validates the generated register contract and compiles the combined
 ESPHome firmware. Release tags use the simulator version published by

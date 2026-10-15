@@ -4,6 +4,7 @@ from esphome import pins
 from esphome.components import modbus, uart
 from esphome.const import CONF_FLOW_CONTROL_PIN, CONF_ID
 from esphome.cpp_helpers import gpio_pin_expression
+from esphome.core import CORE
 
 DEPENDENCIES = ["uart"]
 AUTO_LOAD = ["modbus"]
@@ -44,6 +45,10 @@ CONFIG_SCHEMA = cv.All(
 
 
 async def to_code(config):
+    # Keep native HTTP server task stacks in internal RAM, with enough margin
+    # for combined-simulator REST serialization. See httpd_stack.cpp.
+    if "web_server" in CORE.config:
+        cg.add_build_flag("-Wl,--wrap=httpd_start")
     simulator = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(simulator, config)
 

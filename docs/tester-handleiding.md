@@ -221,7 +221,8 @@ ieder hun eigen frequentietabel. De gemeten frequentie loopt met een ramp naar
 de doelfrequentie; een modewissel stopt de compressor eerst.
 
 V1, V1.5 en V2 old begrenzen een aanvraag boven F10 tot F10 en verhogen de
-`cap`-teller. V2 new accepteert maximaal F20; heating F20 rapporteert 110 Hz.
+`cap`-teller. V2 new accepteert maximaal F20; zonder de optionele
+verwarmingsbegrenzing rapporteert heating F20 een doel van 110 Hz.
 
 Het thermische vermogen en de COP zijn gesimuleerd op basis van een lokale
 numerieke OpenQuatt-snapshot. V2 gebruikt de volledige CiC 4.2.0-surface;
@@ -229,6 +230,89 @@ gemaskeerde punten en waarden buiten het V2-temperatuurdomein leveren geen
 synthetisch vermogen. Boven 90 Hz blijft de frequentietelemetrie correct,
 maar vermogen en COP worden standaard op het 90Hz-punt begrensd. De diagnose
 `high-frequency performance synthetic` wordt dan actief.
+
+### Optionele verwarmingsbegrenzing V2 new
+
+Schakel `ODU 1/2 heating limits enabled` in om per ODU een beperkt
+V2-new-verwarmingsprofiel te testen. De switches starten na boot uit. Het
+profiel werkt alleen tijdens normaal verwarmen van V2 new; bij andere
+varianten, cooling en defrost blijft het bestaande contractmodel actief.
+De buiteninstelling loopt nu van -30 tot 50 °C, zodat ook de koude en warme
+uitschakel-/herstartgrenzen bedienbaar zijn. Dit vergroot het gevalideerde
+thermische performance-domein niet.
+
+De ontvangen fysieke stand blijft ongewijzigd in `accepted physical level`
+en register `1999`. De begrenzing kiest een `prepared physical level` en
+zoekt die op in de actuele verwarmingstabel. Een aangepaste tabel verandert
+daarom ook de Hz van de begrensde stand. `heating limit reasons` vermeldt
+alle van toepassing zijnde redenen, ook als één daarvan al een lager plafond
+oplegt. `heating limits active` betekent dat het profiel wordt toegepast;
+het betekent niet dat de aanvraag daadwerkelijk wordt verlaagd.
+
+Voor een nieuw begonnen verwarmingsscenario met de standaardtabel en stilte uit:
+
+| Buiten | Waterinlaat | Ontvangen stand | Voorbereide stand | Frequentieverzoek |
+|---:|---:|---:|---:|---:|
+| 7 °C | 30 °C | F20 | F14 | 76 Hz |
+| 20 °C | 30 °C | F17 | F12 | 68 Hz |
+| -10 °C | 33 °C | F20 | F20 | 110 Hz |
+| -10 °C | 36 °C | F20 | F18 | 95 Hz |
+| -10 °C | 33 °C, stilte aan | F20 | F14 | 76 Hz |
+
+De buitenbanden hebben zonder voorgeschiedenis deze plafonds:
+
+| Buiten | Maximale fysieke stand |
+|---|---:|
+| ≤ -25 °C | F0 |
+| > -25 t/m -4 °C | F20 |
+| > -4 t/m 1 °C | F18 |
+| > 1 t/m 6 °C | F16 |
+| > 6 t/m 12 °C | F14 |
+| > 12 t/m 20 °C | F12 |
+| > 20 t/m 24 °C | F10 |
+| > 24 t/m 28 °C | F8 |
+| > 28 t/m 46 °C | F6 |
+| > 46 °C | F0 |
+
+De F20-buitenband blijft actief tot en met -3 °C, maar stopt bij -25 °C.
+De overige draaiende banden houden hun vorige plafond binnen 1 °C aan beide
+zijden van de band. Na koude uitschakeling komt het profiel pas boven -20 °C
+vrij; na warme uitschakeling pas onder 45 °C. Een temperatuursprong buiten
+de hysterese kiest direct de bijbehorende nieuwe band.
+
+F19/F20 vereisen daarnaast een vrijgave: buiten -12 t/m -1 °C en waterinlaat
+≤ 34 °C. De vrijgave blijft actief tot buiten < -13 of > 0 °C, of waterinlaat
+> 35 °C. Zonder vrijgave is het plafond F18. Stille mode, ontvangen via
+register `2006`, begrenst op F14; `quiet mode requested` toont deze vlag.
+
+De diagnostiek toont vier afzonderlijke grootheden:
+
+1. `requested table frequency`: tabel-Hz van de ontvangen, geaccepteerde stand.
+2. `demand frequency` / register `2102`: Hz van de voorbereide stand.
+3. `driver frequency`: doel na eventuele aanvullende labderating.
+4. `measured frequency` / register `2103`: frequentie na de bestaande lineaire ramp,
+   of de handmatige readback wanneer de telemetriefixture actief is.
+
+Buiten dit optionele profiel behoudt `2102` de bestaande uitlezing inclusief
+labderating. Voor de standaardinstellingen zijn vraag en driverdoel gelijk.
+Tijdens standby of afbouw kan de vraag al nul zijn terwijl de gemeten Hz nog
+afnemen. Ongeldige temperatuurwaarden geven in dit labprofiel nulvraag en
+de reden `invalid temperature`; dit is geen nagebootste sensorfoutcode.
+
+Profielactivering, standby, F0, een ongeldige tabel, uitschakelen van de limieten en defrost wissen
+de band- en vrijgavegeschiedenis bij de modelupdate. Na defrost begint de
+verwarmingsbegrenzing opnieuw. Een pauze via `ODU simulation enabled` bevriest
+het model, inclusief deze geschiedenis. Instelbare start-/ramp-/stoptijden
+blijven synthetisch. Autonome defrost en verdere compressorbeveiligingen zijn
+hiermee niet geïmplementeerd; boven 90 Hz blijft de performanceberekening
+als synthetisch gemarkeerd.
+
+Defrostmethode en startinterval worden bij profielactivering hersteld:
+V1 gebruikt methode 0 en raw interval 0, V1.5 methode 0 en interval 45,
+beide V2-profielen methode 4 en interval 45. Andere defrostwaarden blijven
+synthetisch. Bodemplaatmode 0 wist de heaterbit ook tijdens forced defrost;
+modes 1..3 behouden de synthetische temperatuur-/defrostregel en gebruiken
+nog geen volledige temperatuurhysterese of heatervermogensberekening.
 
 ## 8. Handmatige telemetriefixture
 

@@ -212,5 +212,28 @@ int main() {
   assert(!model.write_register(3237U, 61U, 205U)); // out of range -> rejected
   model.configure(Profile::V1_5);
   assert(read(model, 3236U) == 3U);               // V1.5 default = mode 3
+
+  for (const auto profile : {Profile::V1, Profile::V1_5, Profile::V2_OLD, Profile::V2_NEW}) {
+    model.configure(profile);
+    const uint16_t method = profile == Profile::V2_OLD || profile == Profile::V2_NEW ? 4U : 0U;
+    assert(read(model, 3275U) == method);
+    assert(read(model, 3270U) == (profile == Profile::V1 ? 0U : 45U));
+    assert(model.state().defrost_base[5] == method);
+    assert(model.write_register(3275U, 1U, 0U));
+    assert(read(model, 3275U) == 1U && model.state().defrost_base[5] == 1U);
+    model.configure(profile);
+    assert(read(model, 3275U) == method); // profile reset restores the selected defaults
+
+    model.mutable_state().outside_temperature_c = -7;
+    assert((read(model, 2108U) & 0x0004U) != 0U);
+    assert(model.write_register(3236U, 0U, 0U));
+    assert((read(model, 2108U) & 0x0004U) == 0U);
+    model.mutable_state().forced_defrost = true;
+    assert((read(model, 2108U) & 0x0004U) == 0U);
+    assert((read(model, 2108U) & 0x0010U) != 0U);
+    model.set_manual_operating_status_raw(0x0004U);
+    model.set_manual_telemetry_enabled(true);
+    assert(read(model, 2108U) == 0x0004U); // raw manual fixtures retain full control
+  }
   return 0;
 }

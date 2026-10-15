@@ -89,6 +89,17 @@ Modbus addresses below are zero-based. A spreadsheet address is therefore Modbus
 | V2 old model | `2825` | `0x0122` | `0x0E37` | AMH6 | F0..F10 |
 | V2 new model | `2825` | `0x0201` | `0x1037` | AMH6 | F0..F20 |
 
+## Defrost profile defaults
+
+These selected readback defaults do not enable autonomous defrost. Other defrost values remain synthetic.
+
+| Profile | Method | Start interval (raw) |
+|---|---:|---:|
+| V1 | 0 | 0 |
+| V1.5 | 0 | 45 |
+| V2 old model | 4 | 45 |
+| V2 new model | 4 | 45 |
+
 ## Runtime frequency-table presets
 
 | Preset | Profiles | Cooling | Heating |

@@ -27,6 +27,9 @@ jobs:
             "${binary}"
           done
 
+      - name: Inject SSE lifecycle failures
+        run: python3 tests/web_server_idf_lifecycle_test.py
+
   esphome-config:
     runs-on: ubuntu-latest
     steps:

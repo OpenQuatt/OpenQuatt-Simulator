@@ -1,0 +1,87 @@
+# Local ESPHome 2026.8.0 SSE lifecycle backport; see components/web_server_idf/README.md.
+# External component paths resolve against the top-level configuration directory.
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [web_server_idf]
+
+# Keep diagnostics slow and independent of the model/protocol update cadence.
+debug:
+  update_interval: 10s
+
+globals:
+  - id: simulator_wifi_disconnects
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+
+wifi:
+  # This USB-powered lab appliance serves sustained HTTP/SSE traffic. Avoid
+  # ESP32's default LIGHT power saving while diagnosing the weak WiFi link.
+  power_save_mode: none
+  on_disconnect:
+    - lambda: id(simulator_wifi_disconnects)++;
+
+# State events remain available. Avoid duplicating every sensor update as a
+# DEBUG log event for each browser/SSE client.
+logger:
+  level: INFO
+
+web_server:
+  log: false
+
+sensor:
+  - platform: template
+    name: "Simulator HTTPD stack high-watermark"
+    unit_of_measurement: B
+    entity_category: diagnostic
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: return id(odu_simulator)->httpd_stack_high_watermark_bytes();
+  - platform: uptime
+    name: "Simulator uptime"
+    update_interval: 10s
+  - platform: wifi_signal
+    name: "Simulator WiFi signal"
+    update_interval: 10s
+  - platform: template
+    name: "Simulator WiFi disconnects"
+    entity_category: diagnostic
+    state_class: total_increasing
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: return id(simulator_wifi_disconnects);
+  - platform: debug
+    loop_time:
+      name: "Simulator maximum loop time"
+      # The first interval includes time spent in setup(), not only loop().
+      filters:
+        - skip_initial: 1
+    psram:
+      name: "Simulator free PSRAM"
+  - platform: template
+    name: "Simulator internal heap fragmentation"
+    unit_of_measurement: '%'
+    entity_category: diagnostic
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      const auto free = id(odu_simulator)->free_internal_heap();
+      if (free == 0U) return NAN;
+      return 100.0f * (1.0f - float(id(odu_simulator)->largest_internal_heap_block()) / free);
+  - platform: template
+    name: "Simulator largest PSRAM block"
+    unit_of_measurement: B
+    entity_category: diagnostic
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: return id(odu_simulator)->largest_psram_block();
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      name: "Simulator reset reason"
