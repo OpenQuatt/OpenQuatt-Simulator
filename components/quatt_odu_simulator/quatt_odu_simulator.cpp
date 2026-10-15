@@ -703,7 +703,20 @@ uint32_t QuattOduSimulator::largest_internal_heap_block() const {
 }
 
 uint32_t QuattOduSimulator::loop_stack_high_watermark_bytes() const {
-  return uxTaskGetStackHighWaterMark(nullptr) * sizeof(StackType_t);
+  // ESP-IDF returns bytes, unlike upstream FreeRTOS.
+  return uxTaskGetStackHighWaterMark(nullptr);
+}
+
+uint32_t QuattOduSimulator::largest_psram_block() const {
+  return heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+}
+
+float QuattOduSimulator::httpd_stack_high_watermark_bytes() const {
+  // Resolve on each main-loop update; do not retain a handle across restarts.
+  const TaskHandle_t task = xTaskGetHandle("httpd");
+  return task == nullptr
+             ? NAN
+             : static_cast<float>(uxTaskGetStackHighWaterMark(task));
 }
 
 } // namespace esphome::quatt_odu_simulator

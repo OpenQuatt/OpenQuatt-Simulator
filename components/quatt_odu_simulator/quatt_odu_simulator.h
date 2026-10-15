@@ -296,7 +296,9 @@ public:
   uint32_t free_internal_heap() const;
   uint32_t minimum_internal_heap() const;
   uint32_t largest_internal_heap_block() const;
+  uint32_t largest_psram_block() const;
   uint32_t loop_stack_high_watermark_bytes() const;
+  float httpd_stack_high_watermark_bytes() const;
 
 protected:
   static uint16_t encode_unsigned_(float value) {

@@ -71,11 +71,13 @@ foutinspuiting en het herstel bewezen, maar niet de interne controllerfilter.
 **Herstel:** injectieswitch uit; beide ODU-profielen actief; geen lopende
 injectie.
 
-## ODU-HEAT-001 — Verwarmingsbegrenzing V2 new (nog op hardware te valideren)
+## ODU-HEAT-001 — Verwarmingsbegrenzing V2 new
 
 **Doel:** de controller verwerkt een geldige ODU-aanvraag waarvan de uitvoering
-door temperatuur of stilte wordt begrensd. Dit is een geplande HIL-test;
-hosttests bewijzen geen gedrag op de fysieke opstelling.
+door temperatuur of stilte wordt begrensd. Zie het [HIL-rapport van 15 oktober
+2026](hil-pr9-2026-10-15.md) voor de vijf geslaagde gevallen op de oudere
+labcontroller en de beperkte herhaling op actuele dev. Hosttests bewijzen geen
+gedrag op de fysieke opstelling.
 
 **Beginstaat:** baseline, ODU 1 V2 new, geen defrost of handmatige telemetrie,
 normale responses en standaardfrequentietabel. Controleer simulator v0.6.0
@@ -86,6 +88,9 @@ of hoger en noteer controllerversie, profielen en temperaturen.
 1. Schakel `ODU 1 heating limits enabled` in. Vraag via de controller
    normaal verwarmen aan met een fysieke stand boven F14. Houd de ingestelde
    aanvraag zichtbaar; de automatische controller kan een lagere stand kiezen.
+   Actuele dev past ook tijdens handmatige service een eigen temperatuurgrens
+   toe. Een aanvraag F13 bij 7/30 °C is daarom geen bewijs voor het F14-plafond
+   van de simulator: rapporteer dit geval als geblokkeerd door de fixture.
 2. Stel buiten 7 °C en waterinlaat 30 °C in. Controleer binnen 30 seconden
    actieve limieten, de ontvangen stand, een voorbereide stand ≤ F14,
    vraag ≤ 76 Hz en de reden `outside temperature`. Meetfrequentie volgt de
@@ -96,6 +101,8 @@ of hoger en noteer controllerversie, profielen en temperaturen.
 4. Laat de controller stille mode aanvragen. Controleer de ontvangen
    `quiet mode requested`-vlag en bij een aanvraag > F14 het F14-plafond met
    reden `quiet mode`. Gebruik de actuele tabel voor het verwachte Hz-doel.
+   Handmatige HP-service op actuele dev onderdrukt deze stilteaanvraag; gebruik
+   daarvoor normale automatische regeling of rapporteer de ontbrekende vlag.
 5. Herhaal met ODU 2, zonder de ODU-1-switch te wijzigen, en controleer dat
    limietinstelling en hysterese per ODU onafhankelijk zijn.
 
@@ -104,9 +111,10 @@ temperaturen; geen protocolfouten. Leg de controllerreactie op lagere
 gemeten Hz afzonderlijk vast, inclusief eventuele regel- of stopbeslissing.
 Vervang de controlleracceptatiecriteria niet door alleen simulatoruitvoer.
 
-**Herstel:** beide limietswitches uit, stille mode via de controller herstellen,
-profielen, tabellen en temperaturen naar baseline. Bewaar ontvangen standen,
-vraag, driverdoel, gemeten Hz, redenen, protocolcounters en controllerreactie.
+**Einde:** stop de testvraag en leg de eindtoestand vast. Gewone profielen,
+tabellen, temperaturen en broninstellingen hoeven niet naar een oude baseline
+terug. Een actieve foutinjectie moet wel uit. Bewaar ontvangen standen, vraag,
+driverdoel, gemeten Hz, redenen, protocolcounters en controllerreactie.
 
 ## Nieuwe testcase toevoegen
 

@@ -10,6 +10,7 @@ packages:
   boiler: !include hcq_v1_boiler_simulator.yaml
   quatt_odu: !include packages/quatt_odu_simulator.yaml
   thermostat: !include packages/ot_thermostat_simulator.yaml
+  diagnostics: !include packages/system_diagnostics.yaml
 
 esphome:
   name: ${device_name}
