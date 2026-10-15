@@ -164,6 +164,15 @@ public:
   void update() override;
   void dump_config() override;
 
+  void advance_communication_watchdogs(uint32_t now_ms) {
+    for (auto &model : this->models_)
+      model.advance_communication_watchdog(now_ms);
+  }
+  void observe_modbus_request(uint8_t address, uint8_t function_code, uint32_t now_ms) {
+    for (uint8_t index = 0U; index < this->models_.size(); ++index)
+      this->models_[index].observe_modbus_request(this->addresses_[index], address, function_code, true, now_ms);
+  }
+
   void set_hub(QuattOduModbusHub *hub) { this->hub_ = hub; }
   QuattOduSimulatorModel &model(uint8_t index) {
     return this->models_[index < 2U ? index : 0U];
@@ -177,7 +186,7 @@ public:
       return;
     if (profile > static_cast<uint8_t>(Profile::V2_NEW))
       profile = static_cast<uint8_t>(Profile::DISABLED);
-    this->models_[index].configure(static_cast<Profile>(profile));
+    this->models_[index].configure(static_cast<Profile>(profile), millis());
   }
   uint8_t get_profile(uint8_t index) const {
     return static_cast<uint8_t>(this->model(index).state().profile);
@@ -230,7 +239,7 @@ public:
   }
   void set_fault_word(uint8_t index, uint8_t word, uint16_t value) {
     if (word < 3U)
-      this->model(index).mutable_state().fault_words[word] = value;
+      this->model(index).set_fault_word(word, value);
   }
   void set_table_write_enabled(uint8_t index, bool value) {
     this->model(index).mutable_state().table_write_enabled = value;

@@ -1152,10 +1152,11 @@ text_sensor:
                 static_cast<unsigned>(s.protocol.last_write_address),
                 static_cast<unsigned>(s.protocol.last_write_value));
        char extra[64];
-       snprintf(extra, sizeof(extra), " w3999=%u fdef=%u fdefcnt=%lu",
+       snprintf(extra, sizeof(extra), " w3999=%u fdef=%u fdefcnt=%lu wd=%u",
                 static_cast<unsigned>(s.protocol.last_3999_value),
                 static_cast<unsigned>(s.forced_defrost ? 1 : 0),
-                static_cast<unsigned long>(s.protocol.forced_defrost_count));
+                static_cast<unsigned long>(s.protocol.forced_defrost_count),
+                static_cast<unsigned>(id(odu_simulator)->model(0).communication_watchdog_counter()));
        strncat(text, extra, sizeof(text) - strlen(text) - 1);
        return {text};
   - platform: template
@@ -1183,10 +1184,11 @@ text_sensor:
                 static_cast<unsigned>(s.protocol.last_write_address),
                 static_cast<unsigned>(s.protocol.last_write_value));
        char extra[64];
-       snprintf(extra, sizeof(extra), " w3999=%u fdef=%u fdefcnt=%lu",
+       snprintf(extra, sizeof(extra), " w3999=%u fdef=%u fdefcnt=%lu wd=%u",
                 static_cast<unsigned>(s.protocol.last_3999_value),
                 static_cast<unsigned>(s.forced_defrost ? 1 : 0),
-                static_cast<unsigned long>(s.protocol.forced_defrost_count));
+                static_cast<unsigned long>(s.protocol.forced_defrost_count),
+                static_cast<unsigned>(id(odu_simulator)->model(1).communication_watchdog_counter()));
        strncat(text, extra, sizeof(text) - strlen(text) - 1);
        return {text};
 
