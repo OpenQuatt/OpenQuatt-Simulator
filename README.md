@@ -9,7 +9,7 @@ can simultaneously simulate:
   Modbus addresses 1 and 2.
 
 The combined firmware publishes compatibility contract
-`openquatt-modbus-opentherm-v2` and simulator version `v0.6.0`. HIL clients
+`openquatt-modbus-opentherm-v2` and simulator version `v0.7.0`. HIL clients
 must verify the contract before changing controller or simulator state.
 
 The project has no runtime or source dependency on OpenQuatt. Its register,
@@ -159,16 +159,23 @@ pump path or service-mode behavior. The existing pump/flow model remains in use.
 See the [watchdog test procedure](docs/tester-handleiding.md#111-communicatiewatchdog)
 for receipt-versus-response tests and limitations.
 
-`ODU 1/2 heating limits enabled` opts each ODU into a bounded V2 new
-normal-heating preset for outside-temperature limits, inlet-temperature release
-of the highest levels, and quiet mode. The switches start off after boot.
+`ODU 1/2 heating limits enabled` opts each ODU into its profile's bounded
+normal-heating outside limits. V1, V1.5 and V2 old use six warm-weather zones;
+V2 new also retains its cold bands, inlet-temperature release of the highest
+levels, and quiet cap. The switches start off after boot.
 The preset limits physical levels before looking up the current RAM table;
-V1, V1.5, V2 old, cooling and defrost retain the contract model. Diagnostics
+cooling and defrost retain the contract model. The enable register follows
+the switch even during standby/cooling/defrost, and the six warm-zone caps
+are read from the same profile data used by the model. These selected settings
+are read-only over Modbus; the remaining EEPROM fixture is synthetic. Diagnostics
 separate the requested table frequency, prepared demand, driver command and
 measured frequency and report all applicable heating-limit reasons. See the
-[tester guide](docs/tester-handleiding.md#optionele-verwarmingsbegrenzing-v2-new)
+[tester guide](docs/tester-handleiding.md#optionele-verwarmingsbegrenzing)
 for examples and hysteresis/reset behavior. Compressor ramp rates remain lab
 settings; this preset does not model all start conditions or protections.
+Performance-table boundaries do not impose compressor stops. In particular,
+V1/V1.5 continue above 12 C using a lower physical-level cap. Cold shutdown
+and quiet behavior for the older profiles remain outside this preset.
 
 Selected defrost readback defaults are profile-specific: method 0 for V1/V1.5,
 method 4 for V2 old/V2 new, and start interval raw 0 for V1 or 45 for the other

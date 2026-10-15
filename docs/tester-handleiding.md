@@ -231,12 +231,45 @@ synthetisch vermogen. Boven 90 Hz blijft de frequentietelemetrie correct,
 maar vermogen en COP worden standaard op het 90Hz-punt begrensd. De diagnose
 `high-frequency performance synthetic` wordt dan actief.
 
-### Optionele verwarmingsbegrenzing V2 new
+### Optionele verwarmingsbegrenzing
 
-Schakel `ODU 1/2 heating limits enabled` in om per ODU een beperkt
-V2-new-verwarmingsprofiel te testen. De switches starten na boot uit. Het
-profiel werkt alleen tijdens normaal verwarmen van V2 new; bij andere
-varianten, cooling en defrost blijft het bestaande contractmodel actief.
+Schakel `ODU 1/2 heating limits enabled` in om per ODU het begrensde
+verwarmingsprofiel te testen. De switches starten na boot uit; uit betekent
+het bestaande contractmodel. Ingeschakeld gebruiken alle vier varianten hun
+eigen buitenplafonds bij normaal verwarmen. Cooling en defrost blijven buiten
+deze begrenzing. Versie v0.7.0 breidt dit uit van V2 new naar alle profielen.
+
+Voor een nieuw scenario zonder zonegeschiedenis gelden deze fysieke plafonds:
+
+| Profiel | ≤12 °C | >12..20 °C | >20..24 °C | >24..28 °C | >28..46 °C | >46 °C |
+|---|---:|---:|---:|---:|---:|---:|
+| V1 / V1.5 | F10 | F8 | F5 | F3 | F2 | F0 |
+| V2 old | F7 | F6 | F5 | F4 | F3 | F0 |
+| V2 new | F14* | F12 | F10 | F8 | F6 | F0 |
+
+*Bij V2 new geldt F14 boven 6 °C; bij kouder weer gelden de aanvullende
+buitenbanden hieronder. Deze referentieprofielen zijn geen universele
+fabrieksinstellingen. Buiten elke warme band blijft de vorige band binnen
+1 °C aan beide kanten actief. Na warme uitschakeling komt de vraag onder
+45 °C weer vrij. Bij V1/V1.5/V2 old zijn koude uitschakeling, extra
+waterinlaatvrijgave en stille-modebegrenzing hiermee niet gemodelleerd.
+
+Boven 12 °C blijven V1/V1.5 dus verwarmen: bij 13 °C en een nieuwe aanvraag
+F10 wordt dit met de standaardtabel F8 / 79 Hz. V2 old geeft dan F6 / 61 Hz.
+De prestatietabel bepaalt uitsluitend gesimuleerd vermogen/COP en wordt niet
+gebruikt om een extra compressorverbod of CiC-waterplafond op te leggen.
+
+De geselecteerde instellingen zijn consistent uitleesbaar:
+
+| Register | Uitlezing |
+|---:|---|
+| `3281` | De ingestelde limietswitch: 0 uit, 1 aan, ook tijdens standby/cooling/defrost |
+| `3293..3298` | De zes profielplafonds uit bovenstaande tabel, ook met de switch uit |
+
+Deze instellingen zijn read-only via Modbus; bedien de enable via de bestaande
+simulatorswitch. Het profiel bepaalt de plafonds. Het gaat om geselecteerde
+uitlezingen binnen de nog grotendeels synthetische EEPROM-fixture, geen
+volledige EEPROM-/CRC-reproductie.
 De buiteninstelling loopt nu van -30 tot 50 °C, zodat ook de koude en warme
 uitschakel-/herstartgrenzen bedienbaar zijn. Dit vergroot het gevalideerde
 thermische performance-domein niet.
@@ -249,7 +282,7 @@ alle van toepassing zijnde redenen, ook als één daarvan al een lager plafond
 oplegt. `heating limits active` betekent dat het profiel wordt toegepast;
 het betekent niet dat de aanvraag daadwerkelijk wordt verlaagd.
 
-Voor een nieuw begonnen verwarmingsscenario met de standaardtabel en stilte uit:
+Voor V2 new, een nieuw scenario met standaardtabel en stilte uit:
 
 | Buiten | Waterinlaat | Ontvangen stand | Voorbereide stand | Frequentieverzoek |
 |---:|---:|---:|---:|---:|
@@ -259,7 +292,7 @@ Voor een nieuw begonnen verwarmingsscenario met de standaardtabel en stilte uit:
 | -10 °C | 36 °C | F20 | F18 | 95 Hz |
 | -10 °C | 33 °C, stilte aan | F20 | F14 | 76 Hz |
 
-De buitenbanden hebben zonder voorgeschiedenis deze plafonds:
+De aanvullende V2-new-buitenbanden hebben zonder voorgeschiedenis deze plafonds:
 
 | Buiten | Maximale fysieke stand |
 |---|---:|
@@ -280,7 +313,7 @@ zijden van de band. Na koude uitschakeling komt het profiel pas boven -20 °C
 vrij; na warme uitschakeling pas onder 45 °C. Een temperatuursprong buiten
 de hysterese kiest direct de bijbehorende nieuwe band.
 
-F19/F20 vereisen daarnaast een vrijgave: buiten -12 t/m -1 °C en waterinlaat
+Bij V2 new vereisen F19/F20 daarnaast een vrijgave: buiten -12 t/m -1 °C en waterinlaat
 ≤ 34 °C. De vrijgave blijft actief tot buiten < -13 of > 0 °C, of waterinlaat
 > 35 °C. Zonder vrijgave is het plafond F18. Stille mode, ontvangen via
 register `2006`, begrenst op F14; `quiet mode requested` toont deze vlag.
@@ -293,7 +326,7 @@ De diagnostiek toont vier afzonderlijke grootheden:
 4. `measured frequency` / register `2103`: frequentie na de bestaande lineaire ramp,
    of de handmatige readback wanneer de telemetriefixture actief is.
 
-Buiten dit optionele profiel behoudt `2102` de bestaande uitlezing inclusief
+Met het profiel uit of tijdens cooling/defrost behoudt `2102` de bestaande uitlezing inclusief
 labderating. Voor de standaardinstellingen zijn vraag en driverdoel gelijk.
 Tijdens standby of afbouw kan de vraag al nul zijn terwijl de gemeten Hz nog
 afnemen. Ongeldige temperatuurwaarden geven in dit labprofiel nulvraag en
