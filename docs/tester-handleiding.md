@@ -363,8 +363,55 @@ Voorbeelden:
 | High-pressure switch lock | 2120 | 64 | `0x0040` |
 | DC-waterpump fault | 2121 | 8192 | `0x2000` |
 
-Zet de faultwoorden na de test terug op 0. De simulator implementeert momenteel
-geen automatische clear of reboot-latched faultstatus.
+De ingestelde faultwoorden zijn expliciete injecties. Daarnaast genereert de
+communicatiewatchdog zelf `2121.b0`; dat bit verdwijnt pas na herstelde ontvangst
+en een volgende watchdog-aanroep. Een nog actieve handmatige injectie van dit
+bit blijft staan. De overige foutbits worden door de watchdog niet gewist.
+
+### 11.1 Communicatiewatchdog
+
+Iedere ingeschakelde ODU heeft een eigen teller met een nominale stap van 10 ms
+en grens 12.000. De vergelijking gebeurt vóór het ophogen: op 120.000 ms bereikt
+de teller de grens; bij de volgende nominale aanroep (120.010 ms) ontstaat de
+communicatiefout. De teller verzadigt. De fase van de laatste aanvraag kan het
+interval ongeveer één tick verschuiven.
+
+Een correct geadresseerd en CRC-geldig FC03-, FC06- of FC16-request reset de
+teller vóór registerbereikvalidatie. Ook een read of een request waarvan het
+antwoord verloren gaat houdt de ODU dus actief. Een verkeerd unitadres,
+broadcastadres, ongeldige CRC of FC04 reset deze normale watchdog niet.
+
+Bij timeout wordt `2121.b0` actief. De volgende normale regelupdate wist
+gevraagde modus `3999`, level `1999` en interne Hz-vraag, inclusief een eventueel
+uitgesteld defrostlevel. De gemeten compressorfrequentie bouwt via het bestaande
+stopmodel af; zij wordt niet direct nul gemaakt. Een hervatte read reset de
+teller, maar wist de fout pas bij de volgende watchdog-aanroep en herstelt geen
+gewiste opdrachten. Voor herstart zijn opnieuw regelopdrachten nodig.
+
+Voor een toekomstige HIL-case:
+
+1. Breng de ODU met geldige opdrachten in verwarming en volg modus, level, Hz,
+   faultwoord `2121` en `wd` in `ODU 1/2 diagnostics`.
+2. Onderbreek daadwerkelijk alle requests naar die ODU. Alleen antwoorden
+   uitschakelen of alleen writes stoppen toetst de ontvangstwatchdog niet.
+3. Controleer na de grens het foutbit en de gewiste vraag, en daarna de Hz-afbouw.
+   Andere foutbits moeten behouden blijven.
+4. Hervat alleen reads. Controleer dat de fout herstelt, terwijl modus/level nul
+   blijven en de compressor niet vanzelf herstart.
+5. Test apart dat polling zonder writes en verlies van antwoorden de watchdog
+   blijven voeden, en dat verkeer naar HP2 de teller van HP1 niet reset.
+
+De hosttest `quatt_odu_communication_watchdog_test.cpp` gebruikt een bestuurbare
+klok voor de exacte grens, tellerverzadiging, ontvangstfilters, Duo, millis-rollover,
+defrost en beide interleavings van een request op de timeoutgrens. De firmware
+ontvangt alleen CRC-gevalideerde frames uit de RTU-parser. Ruwe UART/CRC-injectie
+op hardware is geen onderdeel van deze hosttest.
+
+Het model volgt statische analyse van één firmwarebackup. Het is een gemeenschappelijk
+HIL-preset; werkelijke timing en andere firmwareversies zijn niet fysiek bevestigd.
+De echte ODU kan door schedulervertraging later reageren. Noodpomplogica voor
+pomptype 2 en afwijkend servicebedrijf zijn niet toegevoegd; pomp/flow blijven
+het bestaande simulatiemodel volgen.
 
 ## 12. Protocolfouten injecteren
 
@@ -372,8 +419,8 @@ Gebruik protocolinjecties altijd één voor één en zet ze na de test weer uit.
 
 | Test | Instelling |
 |---|---|
-| Hele ODU-bus offline | `ODU responses enabled` Off |
-| Eén adres offline | `ODU 1/2 responses enabled` Off |
+| Geen antwoorden op de ODU-bus | `ODU responses enabled` Off |
+| Geen antwoorden van één adres | `ODU 1/2 responses enabled` Off |
 | Vaste vertraging | `Modbus response delay` |
 | Iedere Nde response verliezen | `Drop every Nth ODU request` |
 | Timeout op specifiek startadres | `ODU timeout injection enabled` + startadres |

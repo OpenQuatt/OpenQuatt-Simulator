@@ -24,6 +24,8 @@ void QuattOduModbusHub::setup() {
 }
 
 void QuattOduModbusHub::loop() {
+  if (this->parent_simulator_ != nullptr)
+    this->parent_simulator_->advance_communication_watchdogs(millis());
   this->pump_tx_();
   this->pump_uart_fault_();
   if (this->tx_active_ || this->uart_fault_active_)
@@ -257,6 +259,10 @@ void QuattOduModbusHub::parse_modbus_frames() {
     }
 
     const uint8_t address = this->rx_buffer_[0];
+    // CRC was checked above. Receipt feeds only the addressed ODU, before
+    // range validation, response delay, dropped replies or queue admission.
+    if (this->parent_simulator_ != nullptr)
+      this->parent_simulator_->observe_modbus_request(address, function_code, millis());
     const uint16_t pdu_size = frame_length - 3U;
     std::array<uint8_t, modbus::MAX_PDU_SIZE> pdu{};
     std::memcpy(pdu.data(), this->rx_buffer_.data() + 1U, pdu_size);
@@ -665,6 +671,7 @@ void QuattOduSimulator::setup() {
 
 void QuattOduSimulator::update() {
   const uint32_t now = millis();
+  this->advance_communication_watchdogs(now);
   const float dt_s = this->last_update_ms_ == 0U
                          ? this->get_update_interval() / 1000.0f
                          : (now - this->last_update_ms_) / 1000.0f;

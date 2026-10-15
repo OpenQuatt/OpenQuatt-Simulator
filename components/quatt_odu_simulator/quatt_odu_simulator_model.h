@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include "quatt_odu_communication_watchdog.h"
 #include "quatt_odu_heating_limits.h"
 #include "quatt_odu_performance.generated.h"
 #include "quatt_odu_profiles.generated.h"
@@ -180,8 +181,10 @@ class QuattOduSimulatorModel {
   const ModelSettings& settings() const { return this->settings_; }
   ModelSettings& mutable_settings() { return this->settings_; }
 
-  void configure(Profile profile) {
+  void configure(Profile profile, uint32_t now_ms = 0U) {
     this->state_ = {};
+    this->communication_watchdog_.reset(now_ms);
+    this->injected_communication_fault_ = false;
     this->heating_limits_.reset();
     this->state_.profile = profile;
     const auto& definition = profile_definition(profile);
@@ -196,6 +199,28 @@ class QuattOduSimulatorModel {
 
   bool enabled() const { return profile_definition(this->state_.profile).enabled; }
   uint8_t maximum_level() const { return profile_definition(this->state_.profile).max_physical_level; }
+
+  void advance_communication_watchdog(uint32_t now_ms) {
+    if (!this->enabled()) return;
+    this->communication_watchdog_.advance(now_ms);
+    this->sync_communication_fault_();
+  }
+
+  void observe_modbus_request(uint8_t unit_address, uint8_t request_address, uint8_t function_code,
+                              bool crc_valid, uint32_t now_ms) {
+    if (!this->enabled()) return;
+    this->communication_watchdog_.observe_request(unit_address, request_address, function_code, crc_valid, now_ms);
+    this->sync_communication_fault_();
+  }
+
+  uint16_t communication_watchdog_counter() const { return this->communication_watchdog_.counter(); }
+
+  void set_fault_word(uint8_t word, uint16_t value) {
+    if (word >= this->state_.fault_words.size()) return;
+    if (word == 2U) this->injected_communication_fault_ = (value & CommunicationWatchdog::FAULT_MASK) != 0U;
+    this->state_.fault_words[word] = value;
+    this->sync_communication_fault_();
+  }
 
   void reset_diagnostics() {
     this->state_.protocol = {};
@@ -691,6 +716,21 @@ class QuattOduSimulatorModel {
   void update(float dt_s) {
     if (!this->enabled() || dt_s <= 0.0f) return;
     dt_s = std::min(dt_s, 2.0f);
+    // Normal-mode safety runs separately from the communication scheduler.
+    // It clears requests, never teleports the measured compressor to zero.
+    if ((this->state_.fault_words[2] & CommunicationWatchdog::FAULT_MASK) != 0U &&
+        (this->state_.requested_mode != WorkingMode::STANDBY ||
+         this->state_.active_mode != WorkingMode::STANDBY || this->state_.defrost_active())) {
+      this->abort_forced_defrost_();
+      this->state_.requested_mode = WorkingMode::STANDBY;
+      this->state_.requested_physical_level = 0U;
+      this->state_.accepted_physical_level = 0U;
+      this->state_.deferred_defrost_level = 0U;
+      this->state_.deferred_defrost_level_pending = false;
+      this->state_.requested_table_frequency_hz = 0.0f;
+      this->state_.target_frequency_hz = 0.0f;
+      this->state_.driver_frequency_hz = 0.0f;
+    }
     this->update_forced_defrost_(dt_s);
     this->update_pump_(dt_s);
     this->update_compressor_(dt_s);
@@ -972,6 +1012,15 @@ class QuattOduSimulatorModel {
     }
   }
 
+  void sync_communication_fault_() {
+    auto& word = this->state_.fault_words[2];
+    word = static_cast<uint16_t>((word & ~CommunicationWatchdog::FAULT_MASK) |
+        ((this->communication_watchdog_.timed_out() || this->injected_communication_fault_)
+             ? CommunicationWatchdog::FAULT_MASK : 0U));
+  }
+
+  CommunicationWatchdog communication_watchdog_{};
+  bool injected_communication_fault_{false};
   OduState state_{};
   ModelSettings settings_{};
   HeatingLimits heating_limits_{};

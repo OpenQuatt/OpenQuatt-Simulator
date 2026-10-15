@@ -141,6 +141,24 @@ diagnostics. Heating and cooling select separate tables. Requested levels above
 the profile capability are recorded and capped before a frequency is chosen.
 Mode changes ramp the compressor to zero before restarting in the other mode.
 
+Each enabled ODU now has a nominal normal-Modbus communication watchdog:
+10 ms per count, limit 12000, compare before increment and saturate at the limit.
+A correctly addressed CRC-valid FC03/FC06/FC16 request resets its counter before
+register-range validation, regardless of response delay or loss. Reads keep the
+ODU alive. The next watchdog call clears its generated `2121.b0` fault after a
+reset; it never restores commands cleared by the normal safety update. That
+update clears `3999`, `1999` and internal Hz demand, while measured frequency
+uses the existing stop ramp. Other fault bits and explicit fault injection are
+preserved. The `wd` field in each ODU diagnostics string exposes its counter.
+
+This is a shared HIL preset based on static analysis of one ODU S19 backup, not
+physical validation of every profile or firmware. It models nominal scheduler
+ticks using an explicit monotonic clock; real ODU scheduler delays can lengthen
+the interval. It does not add the real firmware's pump-type-specific emergency
+pump path or service-mode behavior. The existing pump/flow model remains in use.
+See the [watchdog test procedure](docs/tester-handleiding.md#111-communicatiewatchdog)
+for receipt-versus-response tests and limitations.
+
 `ODU 1/2 heating limits enabled` opts each ODU into a bounded V2 new
 normal-heating preset for outside-temperature limits, inlet-temperature release
 of the highest levels, and quiet mode. The switches start off after boot.
