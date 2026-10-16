@@ -55,6 +55,7 @@ Modbus addresses below are zero-based. A spreadsheet address is therefore Modbus
 | 2138 | 2139 | `water_flow` | read | L/h | 0.618 | controller_contract | no |
 | 3999 | 4000 | `requested_working_mode` | read_write | enum | 1 | controller_contract | no |
 | 3275 | 3276 | `defrost_mode` | read_write | enum | 1 | controller_contract | no |
+| 3281 | 3282 | `heating_outside_limit_enabled` | read | boolean | 1 | controller_contract | no |
 | 11004 | 11005 | `extended_metadata_11004` | read | raw | 1 | unknown | no |
 | 11005 | 11006 | `extended_metadata_11005` | read | raw | 1 | unknown | no |
 | 11006 | 11007 | `extended_metadata_11006` | read | raw | 1 | unknown | no |
@@ -68,6 +69,7 @@ Modbus addresses below are zero-based. A spreadsheet address is therefore Modbus
 
 | Modbus | Sheet | Name | Access | Profiles | Confidence |
 |---|---|---|---|---|---|
+| 3293..3298 | 3294..3299 | `heating_outside_level_limits` | read | v1, v1_5, v2_old, v2_new | observed |
 | 3270..3280 | 3271..3281 | `defrost_base` | read | v1, v1_5, v2_old, v2_new | synthetic |
 | 3307..3315 | 3308..3316 | `defrost_timing` | read | v1, v1_5, v2_old, v2_new | synthetic |
 | 3336..3341 | 3337..3342 | `defrost_coil` | read | v1, v1_5, v2_old, v2_new | synthetic |
@@ -99,6 +101,23 @@ These selected readback defaults do not enable autonomous defrost. Other defrost
 | V1.5 | 0 | 45 |
 | V2 old model | 4 | 45 |
 | V2 new model | 4 | 45 |
+
+## Normal-heating outside limits
+
+These reference presets select physical levels from the current heating table.
+The configured enable readback follows the per-ODU heating-limits switch (off after boot).
+Cooling and defrost bypass this normal-heating preset. Settings are read-only over Modbus.
+
+| Profile | <=12 C | >12..20 C | >20..24 C | >24..28 C | >28..46 C | >46 C |
+|---|---:|---:|---:|---:|---:|---:|
+| V1 | 10 | 8 | 5 | 3 | 2 | 0 |
+| V1.5 | 10 | 8 | 5 | 3 | 2 | 0 |
+| V2 old model | 7 | 6 | 5 | 4 | 3 | 0 |
+| V2 new model | 14 | 12 | 10 | 8 | 6 | 0 |
+
+The table shows fresh warm-zone selection; previous zones have 1 C hysteresis.
+V2 new additionally retains its cold bands, extra-high-level release and quiet cap;
+its first warm-zone cap applies above 6 C. These extra rules are not applied to other profiles.
 
 ## Runtime frequency-table presets
 

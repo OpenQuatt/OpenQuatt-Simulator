@@ -18,6 +18,7 @@ profiles:
     factory_heating: [0]
     defrost_mode: 0
     defrost_start_interval_raw: 0
+    heating_outside_levels: [0, 0, 0, 0, 0, 0]
     confidence: synthetic
 
   - id: v1
@@ -33,6 +34,7 @@ profiles:
     factory_heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
     defrost_mode: 0
     defrost_start_interval_raw: 0
+    heating_outside_levels: [10, 8, 5, 3, 2, 0]
     confidence: observed
 
   - id: v1_5
@@ -48,6 +50,7 @@ profiles:
     factory_heating: [0, 30, 39, 49, 55, 61, 67, 72, 79, 85, 90]
     defrost_mode: 0
     defrost_start_interval_raw: 45
+    heating_outside_levels: [10, 8, 5, 3, 2, 0]
     confidence: observed
 
   - id: v2_old
@@ -63,6 +66,7 @@ profiles:
     factory_heating: [0, 20, 26, 30, 48, 55, 61, 72, 80, 85, 90]
     defrost_mode: 4
     defrost_start_interval_raw: 45
+    heating_outside_levels: [7, 6, 5, 4, 3, 0]
     confidence: observed
 
   - id: v2_new
@@ -78,6 +82,7 @@ profiles:
     factory_heating: [0, 20, 26, 30, 36, 40, 45, 48, 52, 55, 60, 65, 68, 72, 76, 82, 85, 90, 95, 102, 110]
     defrost_mode: 4
     defrost_start_interval_raw: 45
+    heating_outside_levels: [14, 12, 10, 8, 6, 0]
     confidence: controller_contract
 
 presets:

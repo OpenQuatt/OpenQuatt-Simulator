@@ -116,6 +116,39 @@ tabellen, temperaturen en broninstellingen hoeven niet naar een oude baseline
 terug. Een actieve foutinjectie moet wel uit. Bewaar ontvangen standen, vraag,
 driverdoel, gemeten Hz, redenen, protocolcounters en controllerreactie.
 
+## ODU-HEAT-002 — Profielplafonds en instellingenuitlezing (nog te valideren)
+
+**Doel:** dezelfde normale verwarmingsaanvraag wordt volgens het gekozen
+ODU-profiel begrensd; de geselecteerde EEPROM-readbacks passen bij het model.
+
+**Beginstaat:** simulator v0.7.0 of hoger, standaardtabellen, geen defrost,
+handmatige telemetrie of foutinjectie. Gebruik de labbaseline en geverifieerde
+interfaces. Leg ook controllercommit, dag-/stiltecap en exclusions vast.
+
+1. Test achtereenvolgens V1, V1.5, V2 old en V2 new. Begin ieder profiel
+   zonder oude zonegeschiedenis, met buiten 14 °C en waterinlaat 30 °C.
+2. Met `heating limits enabled` uit meldt de enable-readback 0 en blijven
+   de zes profielplafonds uitleesbaar. Vraag via de controller een stand
+   boven het te testen plafond aan. Ontbreekt die aanvraag door eigen
+   controllerbeleid, rapporteer `BLOCKED`; dat bewijst de simulatorcap niet.
+3. Schakel de limieten in. Binnen 30 s moet de enable-readback 1 zijn, de
+   ontvangen stand behouden blijven en de voorbereide stand maximaal F8
+   (V1/V1.5), F6 (V2 old) of F12 (V2 new) zijn. Bij een hogere aanvraag
+   betekent dit met de standaardtabel 79, 61 of 68 Hz; gemeten Hz volgen
+   de ingestelde ramp. Controllerterugmelding moet daarmee overeenkomen.
+4. Test de 12 °C-overgang in beide richtingen met hysterese: vanuit de
+   koudere band vasthouden t/m 13 °C, vanuit de warmere band t/m 11 °C.
+   Een nieuwe aanvraag boven 12 °C mag niet uitsluitend om die reden stoppen.
+5. Herhaal met ongelijke profielen op beide ODU-adressen en met een geldige
+   RAM-tabelwijziging. De cap blijft een fysieke stand; de bijbehorende Hz
+   volgen de eigen actuele tabel. Controleer ook switch-off en profielreset.
+
+**Pass/bewijs:** ontvangen en voorbereide standen, tabel, enable/cap-readbacks,
+vraag/driver/feedback, redenen en controllerreactie passen bij ieder scenario;
+geen onverwachte protocolfouten. Leg de eindtoestand vast en volg de lokale
+herstelafspraken. F19/F20, extra stille-modegedrag voor oudere profielen en
+hun koude uitschakeling zijn hiermee niet fysiek gevalideerd.
+
 ## Nieuwe testcase toevoegen
 
 Gebruik: identifier, doel, beginstaat, expliciet gemarkeerde mutaties,

@@ -185,7 +185,7 @@ class QuattOduSimulatorModel {
     this->state_ = {};
     this->communication_watchdog_.reset(now_ms);
     this->injected_communication_fault_ = false;
-    this->heating_limits_.reset();
+    this->heating_limits_.configure(profile);
     this->state_.profile = profile;
     const auto& definition = profile_definition(profile);
     this->state_.cooling_table = definition.factory_cooling;
@@ -461,6 +461,9 @@ class QuattOduSimulatorModel {
       case 3999:
         value = static_cast<uint16_t>(this->state_.requested_mode);
         return true;
+      case 3281:
+        value = this->settings_.heating_limits_enabled ? 1U : 0U;
+        return true;
       case 11160:
         value = definition.customer_model_words[0];
         return true;
@@ -491,6 +494,10 @@ class QuattOduSimulatorModel {
         value = this->state_.cooling_table[11U + address - 3060U];
       else
         value = LEGACY_COOLING_EXTENSION[address - 3060U];
+      return true;
+    }
+    if (address >= 3293U && address <= 3298U) {
+      value = definition.heating_outside_levels[address - 3293U];
       return true;
     }
     if (address >= 3270U && address <= 3280U) {
@@ -870,7 +877,7 @@ class QuattOduSimulatorModel {
     this->state_.prepared_physical_level = 0U;
     this->state_.heating_limit_reasons = HEATING_LIMIT_NONE;
     this->state_.heating_limits_active =
-        this->settings_.heating_limits_enabled && this->state_.profile == Profile::V2_NEW &&
+        this->settings_.heating_limits_enabled &&
         this->state_.active_mode == WorkingMode::HEATING && this->state_.requested_mode == WorkingMode::HEATING &&
         demand && this->runtime_table_valid(WorkingMode::HEATING) && !this->state_.defrost_active();
     if (!this->state_.heating_limits_active) this->heating_limits_.reset();

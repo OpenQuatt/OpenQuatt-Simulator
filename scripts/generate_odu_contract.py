@@ -91,6 +91,12 @@ def validate(registers: dict, profiles: dict, performance: dict) -> None:
         allowed_modes = (0, 1, 3) if profile["id"] in ("disabled", "v1") else (0, 1, 3, 4)
         if profile["defrost_mode"] not in allowed_modes:
             raise ValueError(f"invalid {profile['id']} defrost mode")
+        outside_levels = profile["heating_outside_levels"]
+        if len(outside_levels) != 6 or any(
+            type(level) is not int or not 0 <= level <= profile["max_physical_level"]
+            for level in outside_levels
+        ):
+            raise ValueError(f"invalid {profile['id']} heating outside levels")
         if (not isinstance(profile["defrost_start_interval_raw"], int)
                 or not 0 <= profile["defrost_start_interval_raw"] <= 65535):
             raise ValueError(f"invalid {profile['id']} defrost start interval")
@@ -140,8 +146,9 @@ def generate_profiles(profiles: dict) -> str:
         cooling = ", ".join(str(value) for value in padded(profile["factory_cooling"]))
         heating = ", ".join(str(value) for value in padded(profile["factory_heating"]))
         customer = ", ".join(f"0x{value:04X}U" for value in profile["customer_model_words"])
+        outside_levels = ", ".join(str(level) for level in profile["heating_outside_levels"])
         rows.append(
-            "    {Profile::%s, \"%s\", %s, %dU, %dU, 0x%04XU, 0x%04XU, {%s}, {%s}, {%s}, %dU, %dU},"
+            "    {Profile::%s, \"%s\", %s, %dU, %dU, 0x%04XU, 0x%04XU, {%s}, {%s}, {%s}, %dU, %dU, {%s}},"
             % (
                 CPP_PROFILE[profile["id"]],
                 cpp_string(profile["label"]),
@@ -155,6 +162,7 @@ def generate_profiles(profiles: dict) -> str:
                 heating,
                 profile["defrost_mode"],
                 profile["defrost_start_interval_raw"],
+                outside_levels,
             )
         )
 
@@ -201,6 +209,7 @@ struct ProfileDefinition {{
   std::array<uint8_t, 21> factory_heating;
   uint16_t defrost_mode;
   uint16_t defrost_start_interval_raw;
+  std::array<uint8_t, 6> heating_outside_levels;
 }};
 
 struct RuntimePresetDefinition {{
@@ -438,6 +447,27 @@ def generate_docs(registers: dict, profiles: dict, performance: dict) -> str:
     for profile in profiles["profiles"]:
         if profile["enabled"]:
             lines.append(f"| {profile['label']} | {profile['defrost_mode']} | {profile['defrost_start_interval_raw']} |")
+    lines.extend(
+        [
+            "", "## Normal-heating outside limits", "",
+            "These reference presets select physical levels from the current heating table.",
+            "The configured enable readback follows the per-ODU heating-limits switch (off after boot).",
+            "Cooling and defrost bypass this normal-heating preset. Settings are read-only over Modbus.",
+            "", "| Profile | <=12 C | >12..20 C | >20..24 C | >24..28 C | >28..46 C | >46 C |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for profile in profiles["profiles"]:
+        if profile["enabled"]:
+            levels = " | ".join(str(level) for level in profile["heating_outside_levels"])
+            lines.append(f"| {profile['label']} | {levels} |")
+    lines.extend(
+        [
+            "", "The table shows fresh warm-zone selection; previous zones have 1 C hysteresis.",
+            "V2 new additionally retains its cold bands, extra-high-level release and quiet cap;",
+            "its first warm-zone cap applies above 6 C. These extra rules are not applied to other profiles.",
+        ]
+    )
     lines.extend(
         [
             "",

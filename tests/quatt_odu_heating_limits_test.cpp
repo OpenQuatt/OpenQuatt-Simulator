@@ -77,10 +77,10 @@ int main() {
     assert(model.state().prepared_physical_level == sample.level);
   }
 
-  // Default contract and other variants retain table-based behavior even
-  // if the switch is enabled. Cooling is not given unverified heating limits.
+  // Default contract retains table-based behavior for all variants. Cooling
+  // is not given unverified heating limits.
   for (const auto profile : {Profile::V1, Profile::V1_5, Profile::V2_OLD, Profile::V2_NEW}) {
-    heat(model, profile, 10, 7, 30, profile != Profile::V2_NEW);
+    heat(model, profile, 10, 7, 30, false);
     assert(model.write_register(2006U, 1U, 0U));
     model.update(0.25f);
     assert(read(model, 2102U) == profile_definition(profile).factory_heating[10]);

@@ -5,6 +5,8 @@
 #include <cmath>
 #include <cstdint>
 
+#include "quatt_odu_profiles.generated.h"
+
 namespace esphome::quatt_odu_simulator {
 
 enum HeatingLimitReason : uint8_t {
@@ -43,11 +45,18 @@ struct HeatingLimitResult {
   uint8_t reasons{HEATING_LIMIT_NONE};
 };
 
-// A bounded V2 new normal-heating preset. Limits select physical levels;
+// Bounded normal-heating presets. Limits select physical levels;
 // frequencies always come from the model's current heating table. This is
 // neither an inverter model nor a complete set of compressor protections.
 class HeatingLimits {
  public:
+  explicit HeatingLimits(Profile profile = Profile::V2_NEW) : profile_(profile) {}
+
+  void configure(Profile profile) {
+    this->profile_ = profile;
+    this->reset();
+  }
+
   void reset() {
     this->outside_band_ = NO_BAND;
     this->high_levels_released_ = false;
@@ -55,17 +64,21 @@ class HeatingLimits {
 
   bool high_levels_released() const { return this->high_levels_released_; }
   uint8_t outside_level_limit() const {
-    return this->outside_band_ < OUTSIDE_LEVELS.size() ? OUTSIDE_LEVELS[this->outside_band_] : 0U;
+    if (this->outside_band_ >= 4U && this->outside_band_ <= 9U)
+      return profile_definition(this->profile_).heating_outside_levels[this->outside_band_ - 4U];
+    constexpr std::array<uint8_t, 4> low_temperature_levels{{0U, 20U, 18U, 16U}};
+    return this->outside_band_ < low_temperature_levels.size() ? low_temperature_levels[this->outside_band_] : 0U;
   }
 
   HeatingLimitResult apply(uint8_t requested_level, float outside_c, float water_in_c, bool quiet) {
-    if (!std::isfinite(outside_c) || !std::isfinite(water_in_c)) {
+    const bool extended = this->profile_ == Profile::V2_NEW;
+    if (!std::isfinite(outside_c) || (extended && !std::isfinite(water_in_c))) {
       // Explicit lab policy for invalid inputs, not a sensor-fault emulation.
       this->reset();
       return {0U, HEATING_LIMIT_INVALID_TEMPERATURE};
     }
 
-    if (outside_c < -13.0f || outside_c > 0.0f || water_in_c > 35.0f)
+    if (!extended || outside_c < -13.0f || outside_c > 0.0f || water_in_c > 35.0f)
       this->high_levels_released_ = false;
     else if (outside_c >= -12.0f && outside_c <= -1.0f && water_in_c <= 34.0f)
       this->high_levels_released_ = true;
@@ -76,9 +89,9 @@ class HeatingLimits {
       if (requested_level > level) result.reasons |= reason;
       result.physical_level = std::min(result.physical_level, level);
     };
-    limit(OUTSIDE_LEVELS[this->outside_band_], HEATING_LIMIT_OUTSIDE);
-    if (!this->high_levels_released_) limit(18U, HEATING_LIMIT_HIGH_LEVEL_RELEASE);
-    if (quiet) limit(14U, HEATING_LIMIT_QUIET);
+    limit(this->outside_level_limit(), HEATING_LIMIT_OUTSIDE);
+    if (extended && !this->high_levels_released_) limit(18U, HEATING_LIMIT_HIGH_LEVEL_RELEASE);
+    if (extended && quiet) limit(14U, HEATING_LIMIT_QUIET);
     return result;
   }
 
@@ -86,15 +99,18 @@ class HeatingLimits {
   void update_outside_band_(float outside_c) {
     // Keep the previous band in its hysteresis window. Cold shutdown has
     // a distinct restart threshold; the lowest running band excludes -25 C.
-    if (this->outside_band_ == 0U && outside_c <= -20.0f) return;
-    if (this->outside_band_ == 1U && outside_c > -25.0f && outside_c <= -3.0f) return;
+    const bool extended = this->profile_ == Profile::V2_NEW;
+    if (extended && this->outside_band_ == 0U && outside_c <= -20.0f) return;
+    if (extended && this->outside_band_ == 1U && outside_c > -25.0f && outside_c <= -3.0f) return;
+    // Other profiles currently model the six warm-weather bands only.
+    if (!extended && this->outside_band_ == 4U && outside_c <= 13.0f) return;
     if (this->outside_band_ >= 2U && this->outside_band_ <= 8U &&
         outside_c >= OUTSIDE_BOUNDARIES[this->outside_band_ - 1U] - 1.0f &&
         outside_c <= OUTSIDE_BOUNDARIES[this->outside_band_] + 1.0f)
       return;
     if (this->outside_band_ == 9U && outside_c >= 45.0f) return;
 
-    this->outside_band_ = 0U;
+    this->outside_band_ = extended ? 0U : 4U;
     while (this->outside_band_ < OUTSIDE_BOUNDARIES.size() && outside_c > OUTSIDE_BOUNDARIES[this->outside_band_])
       this->outside_band_++;
   }
@@ -102,7 +118,7 @@ class HeatingLimits {
   static constexpr uint8_t NO_BAND = 0xFFU;
   static constexpr std::array<float, 9> OUTSIDE_BOUNDARIES{
       {-25.0f, -4.0f, 1.0f, 6.0f, 12.0f, 20.0f, 24.0f, 28.0f, 46.0f}};
-  static constexpr std::array<uint8_t, 10> OUTSIDE_LEVELS{{0U, 20U, 18U, 16U, 14U, 12U, 10U, 8U, 6U, 0U}};
+  Profile profile_;
   uint8_t outside_band_{NO_BAND};
   bool high_levels_released_{false};
 };
