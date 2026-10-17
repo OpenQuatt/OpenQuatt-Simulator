@@ -259,7 +259,7 @@ private:
 	volatile uint8_t rx_frame_head_ = 0;
 	volatile uint8_t rx_frame_tail_ = 0;
 	volatile bool edge_overflow_ = false;
-	uint32_t delay_until_ts_ = 0;
+	uint64_t delay_until_us_ = 0;
 	gpio_glitch_filter_handle_t rx_glitch_filter_ = nullptr;
 	rmt_channel_handle_t rx_channel_ = nullptr;
 	rmt_channel_handle_t tx_channel_ = nullptr;
@@ -271,7 +271,7 @@ private:
 #else
 	bool rx_rmt_ready_ = false;
 	volatile bool edge_overflow_ = false;
-	uint32_t delay_until_ts_ = 0;
+	uint64_t delay_until_us_ = 0;
 	gpio_glitch_filter_handle_t rx_glitch_filter_ = nullptr;
 	volatile bool tx_in_progress_ = false;
 	volatile bool tx_complete_ = false;

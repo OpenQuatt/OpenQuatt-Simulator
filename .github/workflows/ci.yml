@@ -27,6 +27,9 @@ jobs:
             "${binary}"
           done
 
+      - name: Check OpenTherm DELAY clock boundaries
+        run: python3 tests/opentherm_frame_delay_test.py
+
       - name: Inject SSE lifecycle failures
         run: python3 tests/web_server_idf_lifecycle_test.py
 
