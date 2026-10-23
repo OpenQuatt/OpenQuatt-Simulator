@@ -187,7 +187,7 @@ void OpenTherm::reset_receive_state_() {
 	portEXIT_CRITICAL(&mux_);
 	response = 0;
 	responseStatus = OpenThermResponseStatus::NONE;
-	delay_until_ts_ = 0;
+	delay_until_us_ = 0;
 	last_rx_frame_end_cycles_ = 0;
 }
 
@@ -738,7 +738,7 @@ bool OpenTherm::process()
 			bDidProcessMessage=true;
 		}
 		status = OpenThermStatus::READY;
-		delay_until_ts_ = 0;
+		delay_until_us_ = 0;
 	}
 	else if (st == OpenThermStatus::RESPONSE_READY) {
 		OpenThermResponseStatus current_status = OpenThermResponseStatus::INVALID_MESSAGE;
@@ -751,7 +751,8 @@ bool OpenTherm::process()
 			}
 		status = OpenThermStatus::DELAY;
 		responseStatus = current_status;
-		delay_until_ts_ = now_cycles() + (OT_FRAME_DELAY_US * cycles_per_us_);
+		// CPU cycle counters wrap in seconds; the inter-frame gap uses monotonic time.
+		delay_until_us_ = static_cast<uint64_t>(esp_timer_get_time()) + OT_FRAME_DELAY_US;
 
 		if (processResponseCallback != NULL) {
 			processResponseCallback(current_response, current_status, pCallbackUser);
@@ -759,12 +760,9 @@ bool OpenTherm::process()
 		}
 	}
 	else if (st == OpenThermStatus::DELAY) {
-		if (delay_until_ts_ == 0) {
-			delay_until_ts_ = static_cast<uint32_t>(ts) + (OT_FRAME_DELAY_US * cycles_per_us_);
-		}
-		if (newTs > delay_until_ts_) {
+		if (static_cast<uint64_t>(esp_timer_get_time()) >= delay_until_us_) {
 			status = OpenThermStatus::READY;
-			delay_until_ts_ = 0;
+			delay_until_us_ = 0;
 		}
 	}
 	return bDidProcessMessage;
